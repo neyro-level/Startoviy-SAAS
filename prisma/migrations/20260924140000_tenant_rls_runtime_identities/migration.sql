@@ -6,11 +6,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   "AuditEvent", "IdempotencyKey", "OutboxEvent", "JobRun"
 TO ams_start_web;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+  "User", "Session", "Account", "Verification", "TwoFactor", "RateLimit",
+  "AccountSetupToken", "PlatformRecoveryToken"
+TO ams_start_web;
+GRANT SELECT ON TABLE "RuntimeHeartbeat", "RetentionRun" TO ams_start_web;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   "AuditEvent", "IdempotencyKey", "OutboxEvent", "JobRun", "Notification"
 TO ams_start_worker;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "RuntimeHeartbeat", "RetentionRun" TO ams_start_worker;
 GRANT SELECT ON TABLE
-  "Organization", "Member", "Project", "Notification", "NotificationRead",
-  "AuditEvent", "IdempotencyKey", "OutboxEvent", "JobRun"
+  "User", "Session", "Account", "Verification", "TwoFactor", "RateLimit",
+  "AccountSetupToken", "PlatformRecoveryToken", "Organization", "Member", "Project",
+  "Notification", "NotificationRead", "AuditEvent", "IdempotencyKey", "OutboxEvent",
+  "JobRun", "RuntimeHeartbeat", "RetentionRun"
 TO ams_start_backup;
 
 ALTER TABLE "OutboxEvent" ADD CONSTRAINT "OutboxEvent_organizationId_id_key" UNIQUE ("organizationId", "id");

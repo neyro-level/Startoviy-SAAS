@@ -120,4 +120,27 @@ describe("PostgreSQL tenant isolation", () => {
       expect(role.rolbypassrls).toBe(false);
     }
   });
+
+  it("gives each runtime role only the tables required by its contract", async () => {
+    const webTables = [
+      "User", "Session", "Account", "Verification", "TwoFactor", "RateLimit",
+      "AccountSetupToken", "PlatformRecoveryToken",
+    ];
+    const [{ web_auth_tables: webAuthTables, web_runtime_heartbeat: webRuntimeHeartbeat, worker_user_table: workerUserTable, worker_runtime_heartbeat: workerRuntimeHeartbeat }] = (
+      await fixtureClient.query(
+        `select
+          bool_and(has_table_privilege('ams_start_web', format('%I', table_name), 'SELECT, INSERT, UPDATE, DELETE')) as web_auth_tables,
+          has_table_privilege('ams_start_web', '"RuntimeHeartbeat"', 'SELECT') as web_runtime_heartbeat,
+          has_table_privilege('ams_start_worker', '"User"', 'SELECT') as worker_user_table,
+          has_table_privilege('ams_start_worker', '"RuntimeHeartbeat"', 'SELECT, INSERT, UPDATE, DELETE') as worker_runtime_heartbeat
+        from unnest($1::text[]) as table_name`,
+        [webTables],
+      )
+    ).rows;
+
+    expect(webAuthTables).toBe(true);
+    expect(webRuntimeHeartbeat).toBe(true);
+    expect(workerUserTable).toBe(false);
+    expect(workerRuntimeHeartbeat).toBe(true);
+  });
 });
