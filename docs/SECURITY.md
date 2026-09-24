@@ -48,4 +48,4 @@ The complete implementation/evidence contract is
 
 ## Tenant Isolation Transition
 
-E03 adds database defence in depth: each protected transaction receives a server-owned local PostgreSQL context, and RLS denies missing or mismatched tenant context. Runtime web and worker identities are non-owner `NOBYPASSRLS` roles; production credentials are intentionally outside this starter. See [`ADR-006`](adr/ADR-006-postgresql-tenant-isolation.md).
+E03 adds database defence in depth: each protected transaction receives a server-owned local PostgreSQL context, and RLS denies missing or mismatched tenant context. Runtime web and worker identities are non-owner `NOBYPASSRLS` roles; production credentials are intentionally outside this starter. The disposable local test identity can bypass RLS only to reset and seed its own `*_test` database; assertions switch to the runtime role first. See [`ADR-006`](adr/ADR-006-postgresql-tenant-isolation.md).

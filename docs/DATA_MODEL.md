@@ -27,7 +27,9 @@ Prisma schema is the runtime source of truth.
 
 ## Migration Policy
 
-Starter baseline is a single initial migration because there is no production database. A derived production product must stop squashing applied migrations.
+The neutral initial migration is followed by forward hardening migrations while
+this starter has no production database. A derived production product must stop
+squashing applied migrations.
 
 ## Tenant Isolation Transition
 

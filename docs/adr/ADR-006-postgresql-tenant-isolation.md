@@ -1,6 +1,6 @@
 # ADR-006: PostgreSQL Tenant Isolation And Runtime Identities
 
-**Status:** accepted for E03 implementation  
+**Status:** accepted for E03 implementation
 **Scope:** multi-tenant + PII starter foundation; no production database or credentials are created by this ADR.
 
 ## Decision
@@ -17,12 +17,17 @@ The E03 transaction helper establishes these local settings with `set_config` or
 
 | Setting | Meaning | Required for |
 | --- | --- | --- |
-| `app.principal_kind` | `tenant-user`, `platform-admin`, `platform-staff`, `api-client` or `job` | every protected transaction |
+| `app.principal_kind` | `identity`, `tenant-user`, `platform-admin`, `platform-staff`, `api-client` or `job` | every protected transaction |
 | `app.actor_id` | authenticated user, API client or job identity | every protected transaction |
 | `app.organization_id` | selected organization identifier | tenant transaction |
 | `app.correlation_id` | request/job correlation identifier | every protected transaction |
 
 The helper accepts context only from the server-created `PrincipalContext` or a server-owned job/API credential. URL, form, cookie, queue payload and raw `organizationId` values are not authorization proof. Context lifetime is the single SQL transaction; pooled connections must not retain it after commit or rollback.
+
+`identity` is a deliberately narrow bootstrap context used only while a fresh
+authenticated user resolves their own memberships before a tenant principal
+exists. Its Member policy is restricted to `app.actor_id`; it cannot read or
+write any other protected tenant table.
 
 ## RLS Coverage Inventory
 
@@ -45,8 +50,8 @@ This table is the executable `verify:rls-coverage` inventory. Adding a model wit
 ## Constraints And Roles
 
 1. Relations between tenant-owned records use a composite owner key such as `UNIQUE (organizationId, id)` on the parent and a matching composite foreign key on the child. The existing `Project` composite key becomes the pattern for dependent tenant models.
-2. `web` and `worker` runtime roles are separate PostgreSQL logins, do not own application tables, are `NOBYPASSRLS`, and receive only required DML/sequence privileges. Worker privileges do not include web session or auth-table work unless specifically proved necessary.
-3. `migrator` is the only DDL-capable identity. `backup` is read-only and has a separately documented operational privilege set. `test` is dedicated to the disposable `_test` database and may prepare it, never a production target.
+2. `web` and `worker` runtime roles are separate PostgreSQL logins, do not own application tables, are `NOBYPASSRLS`, and receive only required DML/sequence privileges. Worker privileges do not include web session or auth-table work unless specifically proved necessary. The starter names these role contracts `ams_start_web`, `ams_start_worker`, `ams_start_migrator` and `ams_start_backup`; a derived product provisions its own credentials outside Git before `migrate deploy`.
+3. `migrator` is the only DDL-capable identity. `backup` is read-only and has a separately documented operational privilege set. `test` is dedicated to the disposable `_test` database and may prepare it, never a production target. The local proof creates passwordless structural runtime roles through the native loopback PostgreSQL administrator, then uses `SET ROLE` from the dedicated test identity; no role password is stored or printed.
 4. Table ownership, schema migration and role grants are applied by controlled migration/bootstrap SQL. Runtime application identities never acquire owner, superuser, `BYPASSRLS`, `CREATE`, `ALTER` or `DROP` merely to run the app.
 
 ## Implementation And Evidence Map
@@ -64,5 +69,10 @@ This table is the executable `verify:rls-coverage` inventory. Adding a model wit
 ## Rollout And Stop Conditions
 
 Implementation is serialized after E02 schema work merges. It first adds role and helper contracts, then constraints/policies, then moves repositories to scoped transactions, then enables enforcement with the integration suite. The baseline migration may be regenerated only while this starter has no production database; a derived product's applied migrations are immutable.
+
+The starter's integration runner invokes a local-only role bootstrap after it
+has proved the target is a literal-loopback `*_test` database. The test identity
+may bypass RLS only to reset and seed that disposable target; every RLS assertion
+switches to a non-owner `NOBYPASSRLS` runtime role first.
 
 Stop immediately if the target database is unknown, the runtime uses an owner, superuser or `BYPASSRLS` identity, a tenant table lacks inventory/policy/test coverage, or an official Prisma/PostgreSQL limitation makes the transaction context non-deterministic. The safe response is a forward design correction, not a live credential or database change.
