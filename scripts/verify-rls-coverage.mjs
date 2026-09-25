@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = path.resolve(import.meta.dirname, "..");
@@ -18,4 +18,40 @@ if (missing.length > 0) {
   throw new Error(`RLS coverage is incomplete: ${missing.join(", ")}`);
 }
 
-process.stdout.write(`rls_coverage=valid models=${requiredModels.length}\n`);
+async function collectSourceFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== "generated") files.push(...await collectSourceFiles(entryPath));
+    } else if (/\.(?:ts|tsx)$/.test(entry.name)) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+const globalClientAllowlist = new Set([
+  "src/platform/auth/auth.ts",
+  "src/platform/database/prisma/client.ts",
+  "src/platform/database/transaction.ts",
+  "src/modules/identity-access/infrastructure/prisma-identity-admin-repository.ts",
+  "src/modules/notifications/infrastructure/prisma-notification-repository.ts",
+]);
+const directClientViolations = [];
+for (const file of await collectSourceFiles(path.join(rootDir, "src"))) {
+  const relativePath = path.relative(rootDir, file).replaceAll("\\", "/");
+  const content = await readFile(file, "utf8");
+  if (content.includes("getPrismaClient(") && !globalClientAllowlist.has(relativePath)) {
+    directClientViolations.push(relativePath);
+  }
+}
+
+if (directClientViolations.length > 0) {
+  throw new Error(
+    `Protected-model access must use an authorized transaction; unexpected global Prisma client use: ${directClientViolations.join(", ")}`,
+  );
+}
+
+process.stdout.write(`rls_coverage=valid models=${requiredModels.length} global_client_guard=valid\n`);

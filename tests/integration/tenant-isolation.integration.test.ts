@@ -6,10 +6,14 @@ const target = readTestDatabaseTarget(process.env, { allowApplicationTarget: tru
 const runtimeRole = "ams_start_web";
 let fixtureClient: pg.Client;
 let runtimeClient: pg.Client;
+let workerClient: pg.Client;
 let organizationA: string;
 let organizationB: string;
 let projectA: string;
 let projectB: string;
+const notificationId = "e03-platform-notification";
+const actorA = "e03-platform-actor-a";
+const actorB = "e03-platform-actor-b";
 
 function createClient() {
   return new pg.Client({
@@ -38,13 +42,48 @@ async function inTenantContext<T>(organizationId: string, execute: () => Promise
   }
 }
 
+async function inPlatformContext<T>(actorId: string, execute: () => Promise<T>): Promise<T> {
+  await runtimeClient.query("begin");
+  try {
+    await runtimeClient.query("select set_config('app.principal_kind', $1, true)", ["platform-admin"]);
+    await runtimeClient.query("select set_config('app.actor_id', $1, true)", [actorId]);
+    await runtimeClient.query("select set_config('app.organization_id', $1, true)", [""]);
+    await runtimeClient.query("select set_config('app.correlation_id', $1, true)", ["e03-platform-read"]);
+    const result = await execute();
+    await runtimeClient.query("commit");
+    return result;
+  } catch (error) {
+    await runtimeClient.query("rollback");
+    throw error;
+  }
+}
+
+async function inSystemJobContext<T>(execute: () => Promise<T>): Promise<T> {
+  await workerClient.query("begin");
+  try {
+    await workerClient.query("select set_config('app.principal_kind', $1, true)", ["system-job"]);
+    await workerClient.query("select set_config('app.actor_id', $1, true)", ["e03-worker"]);
+    await workerClient.query("select set_config('app.organization_id', $1, true)", [""]);
+    await workerClient.query("select set_config('app.correlation_id', $1, true)", ["e03-system-job"]);
+    const result = await execute();
+    await workerClient.query("commit");
+    return result;
+  } catch (error) {
+    await workerClient.query("rollback");
+    throw error;
+  }
+}
+
 describe("PostgreSQL tenant isolation", () => {
   beforeAll(async () => {
     fixtureClient = createClient();
     runtimeClient = createClient();
+    workerClient = createClient();
     await fixtureClient.connect();
     await runtimeClient.connect();
+    await workerClient.connect();
     await runtimeClient.query(`set role ${runtimeRole}`);
+    await workerClient.query("set role ams_start_worker");
 
     const orgA = await fixtureClient.query(
       "insert into \"Organization\" (\"id\", \"name\", \"slug\", \"updatedAt\") values ($1, $2, $3, now()) returning \"id\"",
@@ -68,10 +107,23 @@ describe("PostgreSQL tenant isolation", () => {
     ]);
     projectA = projects[0].rows[0].id;
     projectB = projects[1].rows[0].id;
+    await fixtureClient.query(
+      "insert into \"User\" (\"id\", \"name\", \"email\", \"updatedAt\") values ($1, $2, $3, now()), ($4, $5, $6, now())",
+      [actorA, "E03 Actor A", "e03-actor-a@example.test", actorB, "E03 Actor B", "e03-actor-b@example.test"],
+    );
+    await fixtureClient.query(
+      "insert into \"Notification\" (\"id\", \"category\", \"severity\", \"visibility\", \"title\", \"message\", \"sourceType\", \"dedupKey\", \"occurredAt\") values ($1, 'QUEUE', 'INFO', 'PLATFORM_ADMIN_ONLY', 'E03 platform', 'actor-bound read proof', 'test', $2, now())",
+      [notificationId, notificationId],
+    );
+    await fixtureClient.query(
+      "insert into \"NotificationRead\" (\"notificationId\", \"userId\", \"readAt\") values ($1, $2, now()), ($1, $3, now())",
+      [notificationId, actorA, actorB],
+    );
   });
 
   afterAll(async () => {
     await runtimeClient.end();
+    await workerClient.end();
     await fixtureClient.end();
   });
 
@@ -142,5 +194,30 @@ describe("PostgreSQL tenant isolation", () => {
     expect(webRuntimeHeartbeat).toBe(true);
     expect(workerUserTable).toBe(false);
     expect(workerRuntimeHeartbeat).toBe(true);
+  });
+
+  it("binds NotificationRead visibility and writes to the transaction actor", async () => {
+    const visibleReads = await inPlatformContext(actorA, () =>
+      runtimeClient.query("select \"userId\" from \"NotificationRead\" where \"notificationId\" = $1", [notificationId]),
+    );
+    expect(visibleReads.rows.map((row) => row.userId)).toEqual([actorA]);
+
+    await expect(inPlatformContext(actorA, () =>
+      runtimeClient.query(
+        "insert into \"NotificationRead\" (\"notificationId\", \"userId\", \"readAt\") values ($1, $2, now())",
+        [notificationId, actorB],
+      ),
+    )).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("allows system-job operational rows but denies identity data to the worker role", async () => {
+    await expect(inSystemJobContext(() =>
+      workerClient.query("select \"id\" from \"User\" limit 1"),
+    )).rejects.toMatchObject({ code: "42501" });
+
+    const outboxRows = await inSystemJobContext(() =>
+      workerClient.query("select \"id\" from \"OutboxEvent\" order by \"id\" limit 1"),
+    );
+    expect(outboxRows.rowCount).toBeGreaterThanOrEqual(0);
   });
 });
