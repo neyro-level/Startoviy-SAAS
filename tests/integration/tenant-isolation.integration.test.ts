@@ -159,6 +159,29 @@ describe("PostgreSQL tenant isolation", () => {
     ).rejects.toMatchObject({ code: "23503" });
   });
 
+  it("keeps idempotency and outbox organization scopes aligned while allowing global work", async () => {
+    await fixtureClient.query(
+      "insert into \"OutboxEvent\" (\"id\", \"organizationId\", \"topic\", \"payload\", \"correlationId\", \"updatedAt\") values ($1, $2, 'e03.scope', '{}'::jsonb, $3, now())",
+      ["e03-org-a-outbox", organizationA, "e03-org-a-outbox"],
+    );
+    await expect(
+      fixtureClient.query(
+        "insert into \"IdempotencyKey\" (\"id\", \"organizationScope\", \"organizationId\", \"scope\", \"key\", \"requestHash\", \"status\", \"outboxEventId\", \"expiresAt\", \"updatedAt\") values ($1, $2, $3, 'e03.scope', $4, 'e03', 'COMPLETED', $5, now() + interval '1 hour', now())",
+        ["e03-mismatched-idempotency", organizationB, organizationB, "e03-mismatched-idempotency", "e03-org-a-outbox"],
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
+    await fixtureClient.query(
+      "insert into \"IdempotencyKey\" (\"id\", \"organizationScope\", \"organizationId\", \"scope\", \"key\", \"requestHash\", \"status\", \"outboxEventId\", \"expiresAt\", \"updatedAt\") values ($1, $2, $3, 'e03.scope', $4, 'e03', 'COMPLETED', $5, now() + interval '1 hour', now())",
+      ["e03-matched-idempotency", organizationA, organizationA, "e03-matched-idempotency", "e03-org-a-outbox"],
+    );
+    await expect(
+      fixtureClient.query(
+        "update \"OutboxEvent\" set \"organizationId\" = $1 where \"id\" = $2",
+        [organizationB, "e03-org-a-outbox"],
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
+  });
+
   it("keeps runtime identities non-owner and unable to bypass RLS", async () => {
     const { rows } = await fixtureClient.query(
       "select rolname, rolcanlogin, rolsuper, rolcreaterole, rolbypassrls from pg_roles where rolname = any($1::text[]) order by rolname",
