@@ -115,12 +115,22 @@ CREATE POLICY "Notification_rls" ON "Notification"
   USING (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
     OR (
+      current_setting('app.principal_kind', true) = 'system-job'
+      AND "organizationId" IS NULL
+      AND "visibility" = 'PLATFORM_ADMIN_ONLY'
+    )
+    OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')
     )
   )
   WITH CHECK (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    OR (
+      current_setting('app.principal_kind', true) = 'system-job'
+      AND "organizationId" IS NULL
+      AND "visibility" = 'PLATFORM_ADMIN_ONLY'
+    )
     OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')
@@ -180,6 +190,7 @@ CREATE POLICY "OutboxEvent_rls" ON "OutboxEvent"
   FOR ALL TO PUBLIC
   USING (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    OR current_setting('app.principal_kind', true) = 'system-job'
     OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')
@@ -187,6 +198,7 @@ CREATE POLICY "OutboxEvent_rls" ON "OutboxEvent"
   )
   WITH CHECK (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    OR current_setting('app.principal_kind', true) = 'system-job'
     OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')
@@ -197,6 +209,7 @@ CREATE POLICY "JobRun_rls" ON "JobRun"
   FOR ALL TO PUBLIC
   USING (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    OR current_setting('app.principal_kind', true) = 'system-job'
     OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')
@@ -204,6 +217,7 @@ CREATE POLICY "JobRun_rls" ON "JobRun"
   )
   WITH CHECK (
     current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    OR current_setting('app.principal_kind', true) = 'system-job'
     OR (
       current_setting('app.principal_kind', true) IN ('tenant-user', 'api-client', 'job')
       AND "organizationId" = NULLIF(current_setting('app.organization_id', true), '')

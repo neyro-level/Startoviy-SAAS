@@ -7,7 +7,7 @@ export type DatabaseTransaction = Parameters<
   Parameters<PrismaClient["$transaction"]>[0]
 >[0];
 
-type DatabasePrincipalKind = PrincipalContext["kind"] | "identity";
+type DatabasePrincipalKind = PrincipalContext["kind"] | "identity" | "system-job";
 
 export interface DatabaseAuthorizationContext {
   principalKind: DatabasePrincipalKind;
@@ -64,6 +64,18 @@ export function createIdentityDatabaseAuthorizationContext(input: {
   };
 }
 
+export function createSystemJobDatabaseAuthorizationContext(input: {
+  jobName: string;
+  correlationId: string;
+}): DatabaseAuthorizationContext {
+  return {
+    principalKind: "system-job",
+    actorId: input.jobName,
+    organizationId: null,
+    correlationId: input.correlationId,
+  };
+}
+
 async function setTransactionContext(
   transaction: DatabaseTransaction,
   context: DatabaseAuthorizationContext,
@@ -99,6 +111,16 @@ export async function runInPrincipalDatabaseTransaction<TResult>(
 ): Promise<TResult> {
   return runInAuthorizedDatabaseTransaction(
     createDatabaseAuthorizationContext(principal),
+    execute,
+  );
+}
+
+export async function runInSystemJobDatabaseTransaction<TResult>(
+  input: { jobName: string; correlationId: string },
+  execute: (transaction: DatabaseTransaction) => Promise<TResult>,
+): Promise<TResult> {
+  return runInAuthorizedDatabaseTransaction(
+    createSystemJobDatabaseAuthorizationContext(input),
     execute,
   );
 }
