@@ -92,7 +92,7 @@ export async function requestMaintenance(
 ) {
   const actor = requirePlatformAdmin(principal);
   const input = requestMaintenanceInputSchema.parse(rawInput);
-  const result = await reliabilityService.enqueue({
+  const result = await reliabilityService.enqueue(principal, {
     organizationId: null,
     organizationScope: "platform",
     idempotencyScope: "platform-admin.maintenance",
