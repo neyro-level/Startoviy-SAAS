@@ -140,16 +140,20 @@ CREATE POLICY "Notification_rls" ON "Notification"
 CREATE POLICY "NotificationRead_rls" ON "NotificationRead"
   FOR ALL TO PUBLIC
   USING (
-    EXISTS (
-      SELECT 1 FROM "Notification"
-      WHERE "Notification"."id" = "NotificationRead"."notificationId"
-    )
+    current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    AND "userId" = NULLIF(current_setting('app.actor_id', true), '')
+    AND EXISTS (
+        SELECT 1 FROM "Notification"
+        WHERE "Notification"."id" = "NotificationRead"."notificationId"
+      )
   )
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM "Notification"
-      WHERE "Notification"."id" = "NotificationRead"."notificationId"
-    )
+    current_setting('app.principal_kind', true) IN ('platform-admin', 'platform-staff')
+    AND "userId" = NULLIF(current_setting('app.actor_id', true), '')
+    AND EXISTS (
+        SELECT 1 FROM "Notification"
+        WHERE "Notification"."id" = "NotificationRead"."notificationId"
+      )
   );
 
 CREATE POLICY "AuditEvent_rls" ON "AuditEvent"
