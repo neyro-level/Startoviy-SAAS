@@ -9,6 +9,14 @@ vi.mock("../src/components/marketing/LeadRequestDialog.tsx", () => ({ LeadReques
 import { StartLanding } from "../src/components/marketing/StartLanding.tsx";
 beforeEach(() => { mocks.modules.platformAdmin = "enabled"; mocks.modules.outboxPlusQueue = "enabled"; });
 describe("public optional capabilities", () => {
+  it("renders no unconfigured documentation contact buttons", () => {
+    const html = renderToStaticMarkup(<StartLanding loginRequested={false} />);
+    expect(html).not.toContain('href="https://example.com/');
+    expect(html).not.toContain("Telegram");
+    expect(html).not.toContain("Max");
+    expect(html).toContain('href="mailto:');
+    expect(html).toContain('href="tel:');
+  });
   it.each(["enabled", "disabled", "not_applicable"] as const)("shows the selected admin capability (%s)", (state) => {
     mocks.modules.platformAdmin = state;
     const html = renderToStaticMarkup(<StartLanding loginRequested={false} />);

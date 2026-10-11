@@ -1,7 +1,7 @@
 import { projectIdentity, publicProjectIdentity } from "../../platform/config/project-identity.ts";
-import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { legalLinks, createLegalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
+import { legalLinks, createLegalOperator } from "../../shared/legal/legal-config.ts";
 
 const legalOperator = createLegalOperator(projectIdentity.identity);
 
@@ -37,14 +37,6 @@ export function SiteFooter() {
           <div className="mt-5 grid gap-3">
             <a href={phoneHref} className="w-fit text-sm font-semibold text-[var(--ch-white)] transition hover:text-[var(--ch-soft-white)]">{legalOperator.phone}</a>
             <a href={`mailto:${legalOperator.email}`} className="w-fit text-sm text-[var(--ch-muted-ondark)] transition hover:text-[var(--ch-white)]">{legalOperator.email}</a>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <a href={publicContacts.telegram} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 border border-[var(--ch-border-subtle)] px-3 text-xs font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-hover)] hover:text-[var(--ch-white)]">
-              <Send className="size-4" strokeWidth={1.6} aria-hidden /> Telegram
-            </a>
-            <a href={publicContacts.max} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 border border-[var(--ch-border-subtle)] px-3 text-xs font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-hover)] hover:text-[var(--ch-white)]">
-              <MessageCircle className="size-4" strokeWidth={1.6} aria-hidden /> Max
-            </a>
           </div>
         </address>
       </div>

@@ -20,11 +20,6 @@ export function createLegalOperator(identity: LegalIdentity) {
   };
 }
 
-export const publicContacts = {
-  telegram: "https://example.com/telegram",
-  max: "https://example.com/max",
-} as const;
-
 export const legalLinks = [
   { href: "/politika/", label: "Политика конфиденциальности" },
   { href: "/soglasie/", label: "Согласие на обработку данных" },
