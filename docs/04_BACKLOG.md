@@ -1,34 +1,33 @@
-# Backlog — АМС Старт
+# Развитие нейтральной базы
 
-**Статус:** Active
-**Execution source:** `AMS-MICROSAAS-HARDENING-2026-01 v4` and local Task
-Manager graph. This file is the product-facing summary, not a duplicate graph.
+**Статус:** Active. Это постоянная граница scope, не журнал исполнения.
 
-## NOW
+## Что принадлежит Starter
 
-- No active foundation epic remains in the starter tree. E00–E10 are merged;
-  E11 supplies the final conformance and handover candidate through its own
-  PR-only owner gate.
-- Git and Task Manager, not this product backlog, record whether that final PR
-  has already landed in canonical `main`.
+Укрепление нейтральных identity/MFA, серверной авторизации, tenant/project
+изоляции, transaction-bound commands, audit/idempotency/outbox, безопасного
+worker, UI/PWA, derivation и проверяемых delivery/recovery contracts.
+Требуемое поведение и gaps описывают [01_PRD.md](01_PRD.md) и
+[03_ARCHITECTURE.md](03_ARCHITECTURE.md), маршруты — [02_PRODUCT_STRUCTURE.md](02_PRODUCT_STRUCTURE.md).
+Наличие контракта не означает завершения его реализации или проверки.
 
-## NEXT
+## Что принадлежит производному продукту
 
-- Create a derived repository through `DERIVATION.md` and `HANDOVER.md`.
-- Select the derived product domain, `COMMERCIAL | CRITICAL` delivery profile,
-  secrets, PostgreSQL topology and release target before product work.
+Доменная модель, реальные интеграции и данные, цены/тарифы, пользовательский
+signup при необходимости, юридический оператор, SEO и production topology.
+Производный продукт устанавливает свои delivery permissions и release authority.
 
-## COMPLETED HARDENING
+## Где искать текущую работу
 
-- **E00–E01:** canon, safe PostgreSQL test foundation and neutral derivation.
-- **E02–E06:** identity, RLS, atomic commands, outbox-plus-queue and integrated
-  PostgreSQL evidence.
-- **E07–E10:** manual gates, runtime artifacts, UI/PWA safety and clean-room
-  derivation proof.
-- **E11:** final matrix, bounded exceptions, command map and handover contract
-  in the final PR-only stream.
+Утверждённые волны, dependencies, статусы, планы реализации и результаты
+проверок хранятся в локальном Backlog; review, exact-head gate и merge — в PR
+и Git канонического GitHub. Они не дублируются в документации шаблона и не
+наследуются новой копией. История старого epic не является текущим PASS.
 
-## Constraints
+## Принятие изменений
 
-Each hardening epic has a separate `PR_ONLY` delivery task. No task in this
-repository authorizes automatic merge or production.
+[ADR-015](adr/ADR-015-commercial-template-github-delivery.md) определяет
+COMMERCIAL contract и разрешённый владельцем поэтапный автономный merge
+утверждённой программы через review и green exact-head protected PR.
+Зависимый эпик начинается после реального merge и проверки main.
+Production отдельно разрешается владельцем производного продукта.

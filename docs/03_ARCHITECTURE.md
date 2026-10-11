@@ -19,7 +19,11 @@ PLATFORM_ADMIN = enabled
 
 This repository is a copy-source starter. It has no production users, host,
 database, secrets or release authority. A pull request is never a release and
-the hardening program authorizes `PR_ONLY`, not automatic merge or production.
+the owner has authorized phased autonomous merge of the approved hardening
+program through protected PRs after review and successful exact-head checks.
+This authorization never grants production authority. `REPOSITORY_VISIBILITY`
+describes the final contract: public visibility is temporarily owner-approved
+to unblock CI and must be restored to private after full-program verification.
 
 ## Source of truth
 
@@ -67,7 +71,11 @@ test resources use literal loopback and dedicated test identities; production
 credentials, managed databases and production runners are excluded. A static
 SourceCraft policy PASS or local build does not satisfy this provider gate.
 Protection and successful provider runs require actual API readback; workflow
-presence is not evidence. This contract grants no automatic merge or deploy.
+presence is not evidence. For the approved program, the executor merges each
+reviewed green exact-head PR without another permission request, verifies the
+resulting main SHA and checks, then starts dependent epics. Direct pushes to
+main, force pushes and protection bypass are forbidden. Production remains
+separately authorized; derived products establish their own merge permission.
 
 Permanent template docs retain architecture, security, UI, derivation and
 technical acceptance instructions. Task queues, master-plans, wave inventories
@@ -95,14 +103,94 @@ effects stay outside a business transaction.
 The selected profile is intentional: a shared deployment can serve independent
 organizations and needs an explicit tenant principal, server-owned organization
 context, scoped repositories, tenant-aware constraints and isolation tests.
-RLS is an additional PostgreSQL protection layer, not a replacement for
-authorization; its policy and runtime-role design are implemented in E03.
+RLS is additional PostgreSQL protection, not a replacement for authorization.
+`VERIFIED` source: transaction-local context and tenant coverage already exist
+in `platform/database` and forward migrations. Future project grants and
+within-organization project RLS are TARGET, not proven by tenant isolation.
 
 `outbox-plus-queue` is retained because durable business delivery, replay and
 integration journaling are target guarantees. The starter ships a neutral,
 disabled-by-deployment worker foundation; a derived product enables it only
 after adding an owned async consumer contract. Outbox payloads are minimal,
 versioned and secret/PII-safe; external delivery is after commit.
+
+## Runtime boundaries and implementation state
+
+`VERIFIED` below means source exists; each changed contract still requires its
+matching exact-SHA checks. `EXISTS` is implemented source, `CONFIGURE` is a
+product-owned input, `BUILD` is a target capability, `VERIFY` is missing or
+repeatable evidence, `DEFER` is outside the reusable foundation.
+
+```mermaid
+flowchart LR
+  UI[Next routes / actions] --> F[Module server facade]
+  AUTH[Better Auth + fresh persisted session] --> P[Server principal / permission]
+  P --> F
+  F --> C[defineCommand: parse + authorize]
+  C --> TX[Scoped PostgreSQL transaction]
+  TX --> R[Transaction-bound repositories + tenant RLS]
+  R --> B[Business + audit + idempotency + outbox commit]
+  B --> W[Post-commit leased worker]
+  W -. TARGET enabled consumer .-> O[Safe outbound / scoped object storage]
+  P -. TARGET project grants .-> PS[Explicit project capability / DB context]
+  PS -. TARGET project RLS .-> R
+```
+
+Query facades also use authorized transactions; they do not all invoke a
+mutation command. Source owners: `platform/auth/principal-session.ts`,
+`authorization/principal-factories.ts`, `commands/define-command.ts`,
+`database/transaction.ts`, `database/scoped-db.ts`, module infrastructure and
+`worker/main.ts`. The dashed paths are targets, not existing transport APIs.
+
+| Contract | Class | Actual source / boundary and required proof |
+| --- | --- | --- |
+| Better Auth and fresh principal | EXISTS + VERIFY | auth.ts and principal-session.ts disable cookie-cache, reload persisted expiry/user/org/MFA; native disabled/revoked/setup/MFA denies and complete browser flow |
+| organization context | EXISTS + VERIFY | activeOrganizationId setter validates session/membership; multiple memberships have no implicit first tenant; switcher UI BUILD |
+| system and tenant permissions | EXISTS | principal.ts and module authorization own current PLATFORM_ADMIN/STAFF/MEMBER and ORG_OWNER/ORG_MEMBER/VIEWER semantics; server checks precede data access |
+| tenant RLS and safe runtime identities | EXISTS + CONFIGURE + VERIFY | transaction sets parameterized local principal/actor/org/correlation; declared nine-model coverage and policies; each product supplies non-owner NOBYPASSRLS web/worker roles, migrator separate |
+| project membership/capabilities/context | BUILD + VERIFY | additive neutral grants/capabilities and project-owned policy, never donor domain roles; context cannot trust browser projectId; cross-project native denial mandatory |
+| command atomicity | EXISTS + VERIFY | parse/authorize before scoped transaction; module repositories bind that transaction; business/audit/idempotency/outbox rollback together; no nested independent transaction or external I/O |
+| outbox/queue worker | EXISTS + CONFIGURE + VERIFY | versioned event, leases/retry/dead-letter/recovery, worker entrypoint; product selects own consumers and retention, restart/disabled tests required |
+| typed SecretRef/redaction | BUILD + VERIFY | current logger has redaction paths; typed secret ownership/references and adversarial structured logs are target, raw values never become DTO/log/argv |
+| safe outbound | BUILD + CONFIGURE + VERIFY | disabled by default, product-owned allowlist, DNS/IP/rebinding/redirect limits, timeout/size budget and safe errors; no inherited provider credentials |
+| scoped S3/object storage | BUILD + CONFIGURE + VERIFY | optional adapter, neutral project key/metadata ownership, bounded signed access and cross-project denial; no starter bucket/endpoint is live |
+| PWA/public/private shell | EXISTS + VERIFY | globals/primitives/routes and SW private exclusions; authenticated/post-logout/offline/noindex/cache browser proof |
+| derivation distribution | EXISTS + BUILD + VERIFY | current copy-source identity verifier/smoke; automatic generator omits task/plans/history and installs without SourceCraft; deterministic copies and negative fixtures target |
+| GitHub merge gate | EXISTS + VERIFY | ADR-015, local byte-exact shared vendor/provenance, exact-head app checks and strict protected main; configuration and provider success are distinct |
+| immutable artifacts/recovery recipes | EXISTS + CONFIGURE + VERIFY | Docker/Compose/release/backup scripts; product-owned paths/roles/digests; disposable restore, rollback and non-root artifact inspection required |
+| live provider domain, billing, public signup, production | DEFER | derived product scope/explicit contract; no automatic inclusion or delivery authority |
+
+## Minimal runtime and optional boundaries
+
+The base is Next web plus PostgreSQL, with Better Auth and the module monolith.
+No broker, S3, external provider or live HTTP consumer is a mandatory core
+service. pg-boss uses PostgreSQL; the worker is a separate process only when a
+product chooses async work. `EXISTS` worker tooling is not an enabled production
+consumer. Optional-module decisions are explicit in the identity/derivation
+contract; current manifest decisions are UNDECIDED in starter mode.
+
+`TARGET`: disabled optional HTTP/storage/consumer APIs fail closed with a typed
+safe result and require no configured external endpoint. Disabled data paths
+must be checked as well as enabled positive scenarios. No fallback may silently
+create a real provider request, use a public shared bucket or unscoped project.
+
+## Extension and deployment boundary
+
+A derived product adds domain modules through existing facades/ports, DTOs,
+commands and transaction-bound repositories; new tenant/project-owned tables
+require policy/coverage/native negative tests in the same change. Its optional
+provider adapters resolve owned credentials server-side and run external I/O
+outside the business transaction. Copying a donor migration, auth framework,
+legal identity or production adapter is outside this architecture contract.
+
+Docker/Compose/systemd/Nginx are reusable packaging recipes, not current
+production topology. Web/worker/migrator/backup roles and secrets are distinct;
+only migrator receives DDL. Connection budgets, proxy CIDRs, release/artifact
+identity, offsite backup and legal retention belong to the derived product.
+[ENVIRONMENT.md](ENVIRONMENT.md) owns variable names/conditions without values;
+[05_RELEASE_CHECKLIST.md](05_RELEASE_CHECKLIST.md) owns acceptance statuses;
+[RUNBOOK_DEPLOY.md](RUNBOOK_DEPLOY.md) and [ops/RECOVERY.md](ops/RECOVERY.md)
+own procedures. Production and live data are separately authorized.
 
 ## PII lifecycle
 
@@ -124,15 +212,17 @@ contract, not legal advice.
 | Area | Installed exact version | Decision |
 | --- | --- | --- |
 | Node.js | 24.20.0 | Node 24 line; project exact version is pinned |
-| Next.js | 16.3.8 | App Router 16.x; use `proxy.ts` semantics when needed |
+| Next.js | 16.3.8 | installed App Router line; package.json/lockfile own exact pin |
 | React | 19.2.8 | compatible project line |
 | Prisma / adapter | 7.10.0 / `@prisma/adapter-pg` 7.10.0 | supported PostgreSQL adapter pattern |
-| PostgreSQL target | 18 | target line; local/integration proof is introduced by E00A |
-| Better Auth | 1.7.2 | 2FA plugin supports TOTP and recovery codes; E02 owns enforcement |
+| PostgreSQL target | 18 | target line; native guarded test target; no starter production database |
+| Better Auth | 1.7.2 | plugin configured in auth.ts; server MFA guards exist, complete UI requires proof |
 | pg-boss | 12.30.0 | PostgreSQL queue; schema migration/runtime privileges stay separate |
 | TypeScript | 6.0.3 | explicit project exception to Core 3.4's 5.9.x hold; no upgrade is implied |
 
-Official compatibility checked on 2026-09-24:
+Historical compatibility references recorded on 2026-09-24, retained for
+reproducibility. Installed versions above come from the current lockfile;
+these references alone do not establish current provider/runtime compatibility:
 
 - Next.js 16 upgrade/proxy guidance: <https://nextjs.org/docs/app/guides/upgrading/version-16>;
 - Prisma 7 PostgreSQL adapter: <https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/postgresql>;
@@ -150,8 +240,9 @@ not an incidental hardening change.
 
 - ADR-001 fixes the application-platform profile.
 - ADR-002 fixes the neutral hardening boundary and traceability.
-- Revisit tenancy/RLS after E03 proof; revisit queue deployment after E05;
-  revisit TypeScript only through a separately approved version task.
+- Revisit tenancy/RLS with new project-grant/native-negative proof; queue
+  deployment requires an owned consumer and restart/disabled proof.
+- Revisit TypeScript only through a separately approved version task.
 
 Dependency security pins: `fast-uri` 3.1.8 and `source-map-js` 1.2.2 patch
 their audited URI/source-map defects. `sharp` 0.35.5 pins Next's optional

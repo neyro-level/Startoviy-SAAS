@@ -3,7 +3,12 @@
 **Status:** Active extension. Local-runtime procedure detail for the architecture
 contract; it does not define production topology.
 
-Canonical local mode: Windows-native checkout and Windows-native PostgreSQL.
+Native PostgreSQL18 is the local default; use the host's own checkout/runtime.
+Windows-native PostgreSQL is supported by the existing procedure; Docker/WSL
+is not a mandatory local mode. The current local-postgres command verifies a
+running owned loopback `_dev` database/role; it does not install/start a server.
+Its stop command deliberately leaves the shared service running. Provision
+native PostgreSQL separately before those checks; no production target.
 
 Suggested local names:
 
@@ -15,7 +20,7 @@ Suggested local names:
 Start:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm prisma:generate
 pnpm dev
 ```
@@ -27,4 +32,13 @@ pnpm dev:db:status
 pnpm dev:start
 ```
 
-Local URL: `http://127.0.0.1:3001`. Open `/dashboard/` for private shell after login.
+Direct `pnpm dev`: `http://127.0.0.1:3000`.
+Managed `pnpm dev:start`: `http://127.0.0.1:3001`, requires .env.local and the
+already running local database; health/service check prevents replacing an
+unrelated occupied process. Complete DATABASE/auth inputs follow
+[ENVIRONMENT](../ENVIRONMENT.md); migrations/bootstrap are explicit commands
+against that owned local target. Bootstrap is transitional until complete
+setup/MFA flow, not proof of production provisioning.
+`pnpm test:integration` uses separate TEST_DATABASE inputs and destructive
+safety preflight; never reuse development/production database or credentials.
+ Open `/dashboard/` for private shell after login.

@@ -128,6 +128,23 @@ describe("copy-source derivation verifier", () => {
     expect(() => runVerifier(root)).toThrow(/identity\.legalOperatorEmail/);
   });
 
+  it("rejects an unresolved legal page even when the manifest is complete", () => {
+    const root = createDerivedFixture();
+    mkdirSync(path.join(root, "src", "shared", "legal"), { recursive: true });
+    writeFileSync(path.join(root, "src", "shared", "legal", "legal-config.ts"),
+      `export const operator = ${JSON.stringify(["TO", "DO:", " legal operator"].join(""))};`);
+    expect(() => runVerifier(root)).toThrow(/unresolved starter token in src\/shared\/legal\/legal-config\.ts/);
+  });
+
+  it("rejects missing legal input instead of inventing an operator", () => {
+    const root = createDerivedFixture();
+    const manifestPath = path.join(root, "starter.identity.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.identity.legalOperatorName = " ";
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    expect(() => runVerifier(root)).toThrow(/identity\.legalOperatorName is required/);
+  });
+
   it("rejects an undecided optional-module contract", () => {
     const root = createDerivedFixture();
     const manifestPath = path.join(root, "starter.identity.json");

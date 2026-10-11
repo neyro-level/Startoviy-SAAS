@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { isExecutionArtifact } from "./execution-artifact-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const forbiddenTokens = [
@@ -23,10 +24,6 @@ const ignoredDirectories = new Set([
   "coverage",
   "graphify-out",
 ]);
-const ignoredFiles = new Set([
-  "docs/MASTER_PLAN.md",
-  "docs/MASTER_PLAN.inventory.json",
-]);
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -35,6 +32,8 @@ async function collectFiles(directory) {
     if (ignoredDirectories.has(entry.name)) continue;
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
+      // Local execution inputs are not product code or permanent canon.
+      if (isExecutionArtifact(path.relative(root, entryPath))) continue;
       files.push(...await collectFiles(entryPath));
       continue;
     }
@@ -48,7 +47,9 @@ async function collectFiles(directory) {
 const violations = [];
 for (const file of await collectFiles(root)) {
   const relativeFile = path.relative(root, file).replaceAll("\\", "/");
-  if (ignoredFiles.has(relativeFile)) continue;
+  // Preserve the owner's ignored root input; tracked planning files are
+  // rejected by docs:check rather than exempted from inherited-tree checks.
+  if (!relativeFile.includes("/") && isExecutionArtifact(relativeFile)) continue;
   const content = await readFile(file, "utf8");
   for (const pattern of forbiddenPatterns) {
     if (pattern.test(content)) {

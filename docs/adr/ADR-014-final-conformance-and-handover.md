@@ -1,6 +1,6 @@
 # ADR-014: Final Conformance And Handover Contract
 
-**Status:** implemented for E11; final-main proof remains an owner merge-gate action
+**Status:** Accepted conformance contract; current final-main proof requires actual verification
 
 Final conformance is evaluated at one exact final `main` SHA, not by combining partial branch results. Every target guarantee receives one of: executable proof with exact evidence, explicit bounded exception, or deferred capability with owner/trigger. Docs, schema, code, GitHub contract and runtime template must agree. ADR-015 supersedes the former SourceCraft/EXPERIMENT premises.
 
@@ -14,7 +14,7 @@ actual required GitHub success needs a separate exact-SHA readback.
 check after the daily proof; `pnpm derive:smoke` remains the independent
 copy-source proof.
 
-E11 may close only after: all feature epics have delivered PR-only evidence; a clean final main has passed the applicable local daily/release-equivalent proof; clean-room derivation repeats successfully; and docs/source-of-truth links reconcile with runtime. Missing local PostgreSQL identity, SourceCraft authorization or other external prerequisites remain recorded blockers, never claimed proof.
+Final acceptance may close only after: all feature epics have delivered protected-PR evidence; a clean final main has passed the applicable local daily/release-equivalent proof; clean-room derivation repeats successfully; and docs/source-of-truth links reconcile with runtime. Missing guarded PostgreSQL identity, required GitHub checks or other applicable prerequisites remain recorded blockers, never claimed proof. Optional SourceCraft mirror access is not a GitHub delivery prerequisite.
 
 | Conformance item | Evidence owner |
 | --- | --- |
@@ -25,4 +25,6 @@ E11 may close only after: all feature epics have delivered PR-only evidence; a c
 | CI/runtime/UI safety | E07/E08/E09 |
 | derivation and handover | E10/E11 |
 
-E11 does not release, merge automatically or import a new plan without owner approval. It is PR-only and RISKY because it validates final security/runtime proof.
+Final conformance is RISKY because it validates security/runtime proof. ADR-015
+owns the current owner-authorized phased merge procedure. This contract grants
+no production release or authorization for a new program.

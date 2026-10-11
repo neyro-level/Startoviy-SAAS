@@ -90,19 +90,5 @@ consume the outbox only after E04 proves atomic enqueue. The change is `RISKY`:
 it needs architecture checks, command unit tests, PostgreSQL transaction tests
 and explicit rollback evidence before PR review.
 
-## Verification Record
-
-The E04 implementation was verified on the epic branch after the merged E03
-runtime context became its base. Evidence produced by the task-scoped checks:
-
-- dependency rules and static architecture guards pass with no violations;
-- command unit tests prove validation and authorization happen before the
-  single injected transaction is opened;
-- isolated native PostgreSQL integration tests prove an audit failure rolls
-  back the business write;
-- idempotency, outbox and audit rows commit together, while a duplicate request
-  reuses the original outbox result;
-- typecheck, lint, unit, documentation and the complete integration suite pass.
-
-This record is verification evidence only. It does not authorize merge or a
-production release; E04 remains `PR_ONLY`.
+Current verification requires the tests above on the candidate SHA; results
+are stored in tracker/PR. ADR-015 owns phased protected merge, never production.

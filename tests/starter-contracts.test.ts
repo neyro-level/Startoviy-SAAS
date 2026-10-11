@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createProjectInputSchema } from "../src/modules/project-registry/contracts.ts";
 import { createUserInputSchema, systemRoleSchema } from "../src/modules/identity-access/contracts.ts";
 import { requestMaintenanceInputSchema } from "../src/modules/platform-operations/contracts.ts";
-import { readFileSync } from "node:fs";
+import { assertNoInheritedExecutionArtifacts } from "../scripts/execution-artifact-policy.mjs";
 
 describe("starter admin contracts", () => {
   it("uses neutral system roles", () => {
@@ -29,10 +29,18 @@ describe("starter admin contracts", () => {
     });
   });
 
-  it("keeps approved Task Manager artifacts outside product neutrality scanning", () => {
-    const verifier = readFileSync("scripts/verify-config.mjs", "utf8");
-    expect(verifier).toContain('"docs/MASTER_PLAN.md"');
-    expect(verifier).toContain('"docs/MASTER_PLAN.inventory.json"');
-    expect(verifier).toContain("if (ignoredFiles.has(relativeFile)) continue");
+  it("accepts permanent canon and rejects inherited execution inputs", () => {
+    expect(() => assertNoInheritedExecutionArtifacts([
+      "docs/01_PRD.md", "docs/04_BACKLOG.md", "docs/adr/ADR-015-commercial-template-github-delivery.md",
+    ])).not.toThrow();
+    for (const file of [
+      "docs/MASTER_PLAN.md", "docs/MASTER_PLAN.inventory.json", "MASTER_PLAN_AMS_INPUT.md",
+      "backlog/tasks/task-1.md", ".beads/issues.jsonl", ".ams-task-manager/state.json",
+      ".local/evidence/snapshot.json", ".release-artifacts/release.tar.gz", "test-results/run.json",
+      "docs/execution-snapshot.json", "docs/approval_snapshot.md", "docs/review-snapshot.md",
+      "backlog\\tasks\\task-1.md",
+    ]) {
+      expect(() => assertNoInheritedExecutionArtifacts(["docs/01_PRD.md", file])).toThrow("must not be inherited");
+    }
   });
 });

@@ -1,5 +1,8 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { verifyDocumentationLinks } from "./docs-links.mjs";
+import { execFileSync } from "node:child_process";
+import { assertNoInheritedExecutionArtifacts } from "./execution-artifact-policy.mjs";
 
 const root = process.cwd();
 const read = (file) => readFileSync(resolve(root, file), "utf8");
@@ -46,15 +49,30 @@ for (const file of ["docs/PRODUCT.md", "docs/ARCHITECTURE.md"]) {
   }
 }
 
-for (const text of [
-  "Plan ID: AMS-MICROSAAS-HARDENING-2026-01",
-  "Status: APPROVED",
-  "Production: prohibited by this plan",
-]) {
-  requireText("docs/MASTER_PLAN.md", text);
+// Current code/canon owns invariants. Task history stays in ignored local
+// records and Git; a copied product must never depend on an execution plan.
+const trackedFiles = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" })
+  .split("\0").filter((file) => file && existsSync(resolve(root, file)));
+assertNoInheritedExecutionArtifacts(trackedFiles);
+for (const role of ["Навигатор", "Продуктовые требования", "Страницы и сценарии", "Дизайн", "Техническая архитектура", "Факты и контент", "Приёмка"]) {
+  const owners = read("docs/README.md").split("\n").filter((line) => line.startsWith(`| ${role} |`));
+  if (owners.length !== 1) throw new Error(`Documentation role must have one authoritative owner: ${role}`);
 }
-if (!existsSync(resolve(root, "docs/MASTER_PLAN.inventory.json"))) {
-  throw new Error("Missing approved Task Manager inventory: docs/MASTER_PLAN.inventory.json");
+for (let index = 1; index <= 18; index += 1) {
+  const id = `REQ-${String(index).padStart(2, "0")}`;
+  const rows = read("docs/01_PRD.md").split("\n").filter((line) => line.startsWith(`| ${id} |`));
+  if (rows.length !== 1) throw new Error(`Requirement must have one authoritative PRD row: ${id}`);
+}
+for (const [prefix, count] of [["PAGE", 11], ["FLOW", 6]]) {
+  for (let index = 1; index <= count; index += 1) {
+    const id = `${prefix}-${String(index).padStart(3, "0")}`;
+    const rows = read("docs/02_PRODUCT_STRUCTURE.md").split("\n").filter((line) => line.startsWith(`| ${id} |`));
+    if (rows.length !== 1) throw new Error(`Route/flow must have one authoritative structure row: ${id}`);
+  }
+}
+requireText("docs/01_PRD.md", "## Факты и placeholders");
+for (const status of ["TECHNICAL_COMPLETE", "DERIVATION_READY", "DERIVED_RELEASE_READY", "PUBLIC_RELEASE_READY", "DEPLOYED"]) {
+  requireText("docs/05_RELEASE_CHECKLIST.md", `| ${status} |`);
 }
 
 for (const file of [
@@ -75,4 +93,13 @@ for (const section of ["## PII lifecycle", "## Version matrix and verified excep
   requireText("docs/03_ARCHITECTURE.md", section);
 }
 
+function markdownFiles(directory) {
+  return readdirSync(resolve(root, directory), { withFileTypes: true }).flatMap((entry) => {
+    const file = `${directory}/${entry.name}`;
+    return entry.isDirectory() ? markdownFiles(file) : entry.isFile() && file.endsWith(".md") ? [file] : [];
+  });
+}
+
+const checkedLinks = verifyDocumentationLinks(root, ["README.md", "AGENTS.md", ...markdownFiles("docs")]);
+console.log(`docs_links=PASS count=${checkedLinks}`);
 console.log("docs_canon=PASS");

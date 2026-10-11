@@ -1,12 +1,16 @@
 # Copy-source derivation
 
-`АМС Старт` переносится копированием исходного repository. Генератора в первой
-версии нет: это сохраняет Git-историю, позволяет review каждой product-specific
-замены и не создаёт второй distribution service.
+**Status:** Active extension. PRD owns product/facts; Architecture owns optional
+boundaries; this file owns the actual derivation interface and verification.
+
+`VERIFIED`: baseline uses copy-source plus identity manifest and disposable
+smoke. `TARGET`: approved deterministic generator is not yet implemented;
+existing smoke must not be described as a finished scaffolding CLI. No template
+distribution service or production product is created by verification.
 
 ## Новый производный repository
 
-1. Создайте новый repository из чистого commit starter; не наследуйте его
+1. Создайте новый repository из принятого чистого commit starter с собственной Git identity. Выберите только постоянный tracked source/canon, исключая execution artifacts; не наследуйте его
    production branch, deployment host, database или secrets.
 2. Переименуйте файлы и пути, содержащие starter slug, включая Compose,
    systemd, Nginx, backup и asset names.
@@ -21,11 +25,13 @@
    не переносите `.env.local`, database URLs, tokens или credentials.
 6. Настройте product-specific PostgreSQL roles/topology и exact-head GitHub
    delivery gate согласно выбранному `DELIVERY_PROFILE`.
-7. Запустите `pnpm derive:verify`. Он не пропустит starter slug, example
+7. Выберите свой repository role/profile и merge permissions; текущая программа
+   Starter не даёт производному продукту автоматическое разрешение merge/release.
+   Запустите `pnpm derive:verify`. Он не пропустит starter slug, example
    origin или legal placeholder в tracked text file либо имени файла.
 8. До первого product-кода выполните `pnpm derive:smoke`: verification-only
-   сценарий создаст одноразовую копию, новую локальную Git identity, установит
-   зависимости из локального pnpm store и запустит Prisma, quick, unit и build.
+   сценарий создаст одноразовую копию, новую локальную Git identity с GitHub origin, без SourceCraft configuration, установит
+   frozen offline зависимости из локального pnpm store и запустит Prisma, quick, unit и build.
    Это не генератор продукта: результат всегда удаляется и не публикуется.
 9. Пройдите `HANDOVER.md`, выполните обязательные проверки производного
    продукта и создайте отдельный PR. Сам starter не выпускается в production.
@@ -46,3 +52,28 @@ Verifier читает только tracked text files и credential-free identit
 Он не открывает secret manager, `.env.local`, database или remote deployment.
 Это делает clean-room smoke повторяемым: успешный прогон доказывает, что
 копия не сохранила скрытую identity starter.
+
+## Граница наследования и фактическая конфигурация
+
+Copy/generator never inherits Backlog, .beads, task-manager stores, temporary
+master-plans/inventories, execution/approval/review snapshots, local reports,
+.env.local, runtime data, artifacts or original Git/remote identity. Current
+tracked canon contains no old execution plan and docs:check rejects inherited
+execution files. Existing smoke copies tracked permanent sources only, creates
+a new Git identity and validates GitHub-only delivery. The future generator
+must enforce the same boundary automatically; a new owner is never asked to
+clean a historical dossier. Git retains original template history for review,
+but a new product does not inherit it as tasks or readiness evidence.
+
+[ENVIRONMENT](ENVIRONMENT.md) owns actual variable required-if/default/scope
+and flags legacy/example names that are not runtime inputs. Do not assume
+blank auth variables enable login, OUTBOX_WORKER_ID env is wired, or backup S3
+variables configure an application storage adapter. Current optional decisions
+are outboxPlusQueue/pwa/platformAdmin; new outbound/storage switches remain
+TARGET until their interface and disabled tests exist. No real secrets, bucket,
+provider, legal approval or production database are created by derive smoke.
+
+A fresh derived copy must pass docs/config/identity/quick/unit/build and its
+own protected exact-head gate. Nonempty legal replacements are syntactic
+inputs; source-backed real facts/legal/media approval and permitted release
+remain separate under [05](05_RELEASE_CHECKLIST.md) and [HANDOVER](HANDOVER.md).

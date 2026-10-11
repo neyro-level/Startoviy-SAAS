@@ -1,67 +1,83 @@
 # Security
 
-**Status:** Active extension. `03_ARCHITECTURE.md` owns the cross-cutting
-policy; this file records the starter's detailed trust boundaries.
+**Status:** Active extension. [03_ARCHITECTURE.md](03_ARCHITECTURE.md) owns
+architecture/profile; this file details trust boundaries and security proof.
+`VERIFIED` is a current source fact; security targets require actual adversarial
+evidence on the candidate SHA, not a blanket compliance claim.
 
-## Trust Boundaries
+## Trust boundaries
 
-- browser never receives secrets;
-- server actions require authenticated principal context;
-- tenant access requires both auth and resource authorization;
-- Platform Admin does not use fake tenant identity;
-- every protected request resolves a fresh server-owned principal; disabled,
-  revoked or expired access is denied on the next request;
-- membership and organization selection are revalidated server-side; an input
-  `organizationId` is never tenant-access proof;
-- external HTTP/email/AI/storage calls are outside business transactions.
+Required contract: browser/UI input is untrusted; authentication does not
+replace server permission and resource checks. No secret reaches Git, docs,
+argv, browser or logs. Avoid unnecessary PII in DTOs/events/audit/logs; derived
+products define legitimate PII access, lawful retention/export/deletion.
+Platform authority is explicit and never represented as a fake organization.
+External HTTP/email/storage/AI effects are outside the business transaction.
 
-## PII
+`VERIFIED`: fresh persisted session/user/membership/MFA principal resolution,
+admin-kind authorization and tenant transactions are implemented. Query/mutation
+permission scope is server-owned; client organizationId/projectId is not proof.
+TOTP remains mandatory for Platform Admin authority; current scheme and open
+provisioning/reset/UI gaps are described in [AUTH](AUTH.md). Current membership
+roles remain unchanged; project grants and stronger per-project policy TARGET.
 
-The starter contains account data, memberships, notifications and audit events. Derived products must document any additional PII before production.
+## Database, commands and jobs
 
-## Public Contact Form
+`VERIFIED`: transaction context uses parameterized PostgreSQL set_config(...,
+true), limited to one transaction; RLS coverage/policies are source-controlled.
+Web/worker identities must be non-owner NOBYPASSRLS, migrator separate. Tests
+may use a dedicated guarded loopback `_test` bootstrap owner solely for
+reset/seed, then switch to runtime role before assertions. Unknown targets are
+rejected before reset; no development/production database is a test fallback.
 
-The visual form is kept, but delivery is disabled by default. It sends only when `NEXT_PUBLIC_CONTACT_API_URL`, `NEXT_PUBLIC_CONTACT_PROJECT_ID` and `NEXT_PUBLIC_CONTACT_SITE_KEY` are configured by the derived product.
+`VERIFIED`: defineCommand parses/authorizes before a transaction; repositories
+bind that same transaction for business/audit/idempotency/outbox. Workers own
+post-commit at-least-once leases/retry/dead-letter. Queue payloads are untrusted
+and validated/versioned; no raw credential or unnecessary PII belongs there.
+`TARGET`: project-scoped contexts, safe optional consumer disable/restart and
+new external adapters need their own native denial/adversarial tests.
+[ADR-006](adr/ADR-006-postgresql-tenant-isolation.md),
+[ADR-007](adr/ADR-007-command-atomicity-and-repository-boundary.md) and
+[ADR-008](adr/ADR-008-outbox-plus-queue-reliability.md) own detailed contracts.
 
-## PWA Cache
+## Secrets, PII and errors
 
-Service worker skips `/api/*`, `/admin/*`, `/dashboard/*`, `/notifications/*`, auth/session routes and non-GET requests. It caches only public shell/static assets.
+`VERIFIED`: Pino logger censors explicit password/token/header/database and
+selected payload/user/contact paths. Safe API errors expose code/message and
+correlationId, not persistence detail. This explicit path list does not prove
+arbitrary nested arrays, uppercase keys, Error.message/stack, URL userinfo,
+connection strings or string interpolation are safe.
+`TARGET / REQUIRES CHECK`: typed SecretRef resolution server-side, adversarial
+nested/error/log cases and sensitive-source lints. Callers never serialize raw
+secret values; resolve only an owned reference at the narrow adapter boundary.
+Value-free names/required conditions belong to [ENVIRONMENT](ENVIRONMENT.md).
+PII inventory and derived retention/legal obligations belong to03; no legal
+compliance, current production backup or universal deletion API is claimed.
 
-E09 formalizes route-aware cache/error/log safeguards in [`ADR-012`](adr/ADR-012-ui-pwa-error-observability-safety.md).
+## HTTP, forms, PWA and public data
 
-## Secrets
+`VERIFIED`: auth uses exact origin and PostgreSQL sign-in rate limit, production
+requires trusted proxy CIDRs. Missing auth/readiness config returns safe503.
+New setup/TOTP/recovery throttling and successful end-to-end flow need proof.
+Public contact form calls an external receiver only when all three public
+CONTACT variables are configured; default disabled response is not delivery.
+Real receiver/consent policy is product-owned and requires explicit acceptance.
 
-Secrets must stay in environment/secret manager, never in Git, docs, browser code, argv or logs.
+`VERIFIED`: SW bypasses private/API/auth/non-GET, caches public shell/static
+assets; private/API HTTP no-store and private noindex policies are specified
+in [02](02_PRODUCT_STRUCTURE.md). `TARGET / REQUIRES CHECK`: authenticated
+cache inspection, logout/offline, disabled feature behavior and safe404/error
+states against the final build. [ADR-012](adr/ADR-012-ui-pwa-error-observability-safety.md)
+owns the safety boundary. Public legal/operator fields are demo placeholders;
+derived release cannot reuse them. No client database, domain or provider is inherited.
 
-## Authentication Transition
+## Evidence and delivery
 
-E02 makes Platform Admin authority conditional on verified TOTP and replaces
-permanent bootstrap passwords with one-time hashed setup and recovery material.
-Sensitive auth rate limits must be PostgreSQL-backed. Trusted origins are exact;
-CSRF/origin protection stays enabled. A production-derived product must define
-the exact reverse-proxy IP/CIDR boundary in `BETTER_AUTH_TRUSTED_PROXY_CIDRS`
-and restrict the origin so it is not directly reachable by clients. Without that
-value Better Auth refuses to start in production; the starter never trusts an
-unconfigured forwarded-IP header. Public errors and logs use safe codes and
-never reveal tokens, secrets or recovery material.
-
-The complete implementation/evidence contract is
-[`ADR-005`](adr/ADR-005-identity-platform-admin-hardening.md).
-
-## Tenant Isolation Transition
-
-E03 adds database defence in depth: each protected transaction receives a server-owned local PostgreSQL context, and RLS denies missing or mismatched tenant context. Runtime web and worker identities are non-owner `NOBYPASSRLS` roles; production credentials are intentionally outside this starter. The disposable local test identity can bypass RLS only to reset and seed its own `*_test` database; assertions switch to the runtime role first. See [`ADR-006`](adr/ADR-006-postgresql-tenant-isolation.md).
-
-## Atomic Mutation Transition
-
-E04 requires a fresh server principal, authorization and one transaction for
-every business mutation. Audit/outbox/idempotency records share that transaction;
-safe public errors carry a correlation ID, while raw persistence details stay
-server-side. The complete rule is [`ADR-007`](adr/ADR-007-command-atomicity-and-repository-boundary.md).
-
-## Async Transition
-
-E05 queue payloads are untrusted, validated again by the worker, versioned and
-free of secrets or unnecessary PII. Runtime worker access is a separate
-non-owner database identity; external effects happen only after commit. See
-[`ADR-008`](adr/ADR-008-outbox-plus-queue-reliability.md).
+Unit security/principal/logger tests and native setup/tenant/command/outbox
+suites are existing proof sources. They run only in guarded disposable contexts.
+Semgrep, dependency and secret scans must reflect real artifacts; scanning
+configuration is not a security verdict. COMMERCIAL GitHub exact-head required
+checks are mandatory under [ADR-015](adr/ADR-015-commercial-template-github-delivery.md),
+in addition to relevant local proof. No stale/missing/failed check, direct main
+push or administrative bypass is accepted. Phased protected merge is already
+owner-authorized for the current program; production remains separately authorized.

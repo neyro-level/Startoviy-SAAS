@@ -8,8 +8,15 @@ This repository supplies a neutral reusable foundation; it is not a production
 application. The owner approved role `template`, profile `COMMERCIAL`, private
 visibility and GitHub primary. Role describes purpose; profile sets acceptance
 requirements. Neither grants production authority. The project remains
-`PR_ONLY`: commit, push and reviewable PR checkpoints are authorized; merge
-requires a separate owner command. SourceCraft may mirror accepted GitHub refs
+protected-PR delivery: commit, push and reviewable checkpoints are authorized.
+The owner subsequently gave the separate command authorizing phased autonomous
+merge for the whole approved program. Each bounded epic requires review,
+successful required GitHub checks on its exact head, protected merge and
+verification of canonical main before dependent work. No repeated owner merge
+approval is required; no direct-main push, force push or gate bypass is allowed.
+Production remains separately authorized. Derived products establish their own
+permissions rather than inheriting this program-specific authorization.
+SourceCraft may mirror accepted GitHub refs
 without owning delivery or becoming a prerequisite for GitHub verification.
 
 The active exact-head contract is owned by `03_ARCHITECTURE.md`. Shared workflow
@@ -20,9 +27,14 @@ Delivery Core's byte-exact vendor with source SHA/checksum provenance lock.
 Validate provenance as part of the project gate; retain the same readonly
 exact-head checks and required context. Do not publish the shared repository.
 Onboarding may apply the approved required context to main after it succeeds on
-the candidate PR, before owner merge. This avoids an unprotected bootstrap merge.
+the candidate PR, before merge. This avoids an unprotected bootstrap merge.
 The central portfolio records this template contract through its own reviewed PR;
 classification alone is not permission to reconcile arbitrary repositories.
+
+The final visibility contract is private. The owner temporarily authorized
+public visibility during development because the GitHub quota blocked checks.
+Restore private after the entire approved program is verified, then read back
+visibility and required protection. The shared Delivery Core stays private.
 
 ## Security and reuse boundaries
 

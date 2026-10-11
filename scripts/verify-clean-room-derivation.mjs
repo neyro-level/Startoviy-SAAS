@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyDerivation } from "./verify-derivation.mjs";
 import { validateGithubPolicy } from "./ci/verify-github-policy.mjs";
+import { assertNoInheritedExecutionArtifacts } from "./execution-artifact-policy.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const derivedRepository = "https://github.com/clean-room/atlas-portal.git";
@@ -111,6 +112,8 @@ function assertRepositoryContract(root) {
     throw new Error("Derived repository origin mismatch.");
   }
   if (existsSync(path.join(root, ".sourcecraft"))) throw new Error("GitHub-only copy inherited an optional mirror.");
+  const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
+  assertNoInheritedExecutionArtifacts(files);
   validateGithubPolicy(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"), {
     nodeVersion: readFileSync(path.join(root, ".node-version"), "utf8").trim(),
     packageManager: JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).packageManager,
@@ -154,6 +157,7 @@ function main() {
     assertRepositoryContract(root);
     run("pnpm", ["install", "--offline", "--frozen-lockfile"], root);
     run("pnpm", ["prisma:generate"], root);
+    run("pnpm", ["docs:check"], root);
     run("pnpm", ["verify:quick"], root);
     run("pnpm", ["test:unit"], root);
     run("pnpm", ["build"], root);
