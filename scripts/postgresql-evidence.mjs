@@ -9,9 +9,10 @@ export const postgresqlEvidenceManifest = Object.freeze({
   ],
   contracts: {
     E02: {
-      suites: ["tests/integration/account-setup.integration.test.ts"],
+      suites: ["tests/integration/account-setup.integration.test.ts", "tests/integration/current-session-totp.integration.test.ts"],
       scenarios: [
         "setup and recovery tokens are single-use and revoke stale sessions",
+        "actual TOTP binds current factor to live session; disable/rotation/recovery/revoke and body spoofs deny",
         "active setup, disabled-user and platform-admin MFA gates deny a fresh principal",
         "multi-membership requires an explicit organization",
       ],

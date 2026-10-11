@@ -11,7 +11,7 @@ migrations as well as Prisma. Planned models are not schema facts.
 | Model | Relations / relevant fields | Boundary |
 | --- | --- | --- |
 | User | sessions/accounts/members/twoFactors/setupTokens/recoveryTokens/notificationReads; systemRole, disabledAt, setupCompletedAt | server-owned identity, fresh principal rereads status |
-| Session | User; token unique, expiresAt, activeOrganizationId, twoFactorVerifiedAt, setupCompletedAt, legacy activeTeamId | persisted authority, selection field is not automatic permission proof |
+| Session | User; token unique, expiresAt, activeOrganizationId, twoFactorVerifiedAt, twoFactorProof, setupCompletedAt, legacy activeTeamId | persisted authority; TOTP proof binds current verified factor/user/session, excluded from public session; selection is not permission proof |
 | Account | User; credential/provider data, password, token candidates | auth-only; issuer/accountId compound uniqueness |
 | Verification | identifier/value/expiresAt | Better Auth verification material, never public DTO |
 | TwoFactor | User; secret/backupCodes/verified/failedVerificationCount/lockedUntil | sensitive MFA material; fields alone do not prove every plugin path |

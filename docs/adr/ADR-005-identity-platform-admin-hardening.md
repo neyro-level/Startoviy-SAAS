@@ -22,7 +22,9 @@ introduced.
    builds a fresh server-owned `PrincipalContext`. A disabled user, an expired
    or deleted session, or a revoked membership is denied on the next request.
 2. A `PLATFORM_ADMIN` principal is granted only after the current session has a
-   verified TOTP second factor. Platform Admin is never assigned a fake tenant.
+   verified TOTP second factor bound to the current enabled factor and that
+   session. A timestamp alone, backup-code login or an inherited marker cannot
+   grant this authority. Platform Admin is never assigned a fake tenant.
 3. A member with more than one active membership has no implicit first
    organization. The application requires an explicit, server-validated
    organization selection and revalidates that membership on every request.
@@ -50,7 +52,7 @@ introduced.
 | --- | --- | --- |
 | Fresh principal; disable/revoke on next request | `principal-session` resolves persisted session/user; principal factory validates enabled user and selected membership; revoke paths delete/invalidate sessions | unit tests for disabled, expired/deleted session and revoked membership; PostgreSQL integration; auth E2E |
 | No implicit tenant for multi-membership | explicit active-organization state, validated against current membership; no ordered-membership fallback | unit + PostgreSQL integration for zero, one and several memberships; E2E selection/change attempt |
-| Admin requires TOTP | Better Auth-compatible two-factor schema/configuration; only a session created by `/two-factor/verify-totp` receives the MFA timestamp accepted by the admin gate | unit gate tests; PostgreSQL integration of factor state; E2E rejects password-only admin session |
+| Admin requires TOTP | Better Auth-compatible schema; successful `/two-factor/verify-totp` binds the live session to the current factor with server-only HMAC proof; new sessions clear proof; fresh principal rereads factor and session | unit proof tests; actual auth-handler PostgreSQL integration; browser denies password-only, revoked and factor-disabled sessions |
 | One-time account setup | hashed `account-setup` token state with expiry/used/revoked markers; command/API consumes atomically and revokes siblings | unit token lifecycle tests; PostgreSQL transaction integration; E2E denies dashboard before completion |
 | No permanent bootstrap password | provisioning commands issue setup token rather than a reusable password; migration revokes fallback after setup | command tests and safe-log inspection; E2E verifies fallback cannot obtain business principal |
 | Admin recovery is deterministic | hashed one-time recovery state; operator-only audited recovery command; factor re-enrolment and material rotation | unit lifecycle tests; PostgreSQL integration; operator runbook dry-run without secret output |

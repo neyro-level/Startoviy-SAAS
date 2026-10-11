@@ -1,3 +1,4 @@
+import { createMfaFactorProof } from "../../src/platform/auth/mfa-session-proof.ts";
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -93,8 +94,14 @@ describe("fresh principal enforcement", () => {
       },
     });
 
-    await expect(getPrincipalStateByUserId(userId, { platformAdminMfaVerified: false })).resolves.toBeNull();
-    await expect(getPrincipalStateByUserId(userId, { platformAdminMfaVerified: true })).resolves.toMatchObject({
+    await expect(getPrincipalStateByUserId(userId)).resolves.toBeNull();
+    // Trusted persisted-state fixture; actual TOTP authentication is proved by
+    // the dedicated current-session suite rather than this factory fixture.
+    const factor = { id: "principal-factor", userId, secret: "synthetic-factor-only", verified: true };
+    await prisma.user.update({ where: { id: userId }, data: { twoFactorEnabled: true } });
+    await prisma.twoFactor.create({ data: { ...factor, backupCodes: "[]" } });
+    await prisma.session.create({ data: { id: "principal-mfa-session", userId, token: "synthetic-principal-token", expiresAt: new Date(Date.now() + 60_000), twoFactorVerifiedAt: new Date(), twoFactorProof: createMfaFactorProof(factor, "principal-mfa-session", process.env.BETTER_AUTH_SECRET!) } });
+    await expect(getPrincipalStateByUserId(userId, { authenticatedSessionId: "principal-mfa-session" })).resolves.toMatchObject({
       principal: { kind: "platform-admin", userId },
     });
 
@@ -105,14 +112,14 @@ describe("fresh principal enforcement", () => {
         expiresAt: new Date(Date.now() + 60_000),
       },
     });
-    await expect(getPrincipalStateByUserId(userId, { platformAdminMfaVerified: true })).resolves.toBeNull();
+    await expect(getPrincipalStateByUserId(userId, { authenticatedSessionId: "principal-mfa-session" })).resolves.toBeNull();
     await prisma.accountSetupToken.updateMany({
       where: { userId },
       data: { revokedAt: new Date() },
     });
 
     await prisma.user.update({ where: { id: userId }, data: { disabledAt: new Date() } });
-    await expect(getPrincipalStateByUserId(userId, { platformAdminMfaVerified: true })).resolves.toBeNull();
+    await expect(getPrincipalStateByUserId(userId, { authenticatedSessionId: "principal-mfa-session" })).resolves.toBeNull();
     await prisma.user.update({ where: { id: userId }, data: { disabledAt: null } });
 
     await prisma.user.update({ where: { id: userId }, data: { systemRole: "MEMBER" } });
