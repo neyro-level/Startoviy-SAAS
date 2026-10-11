@@ -47,9 +47,21 @@ selected payload/user/contact paths. Safe API errors expose code/message and
 correlationId, not persistence detail. This explicit path list does not prove
 arbitrary nested arrays, uppercase keys, Error.message/stack, URL userinfo,
 connection strings or string interpolation are safe.
-`TARGET / REQUIRES CHECK`: typed SecretRef resolution server-side, adversarial
-nested/error/log cases and sensitive-source lints. Callers never serialize raw
-secret values; resolve only an owned reference at the narrow adapter boundary.
+`VERIFIED`: server-only `platform/security/secret-ref.ts` defines frozen,
+branded environment references without capturing their values. Resolution reads
+the current environment only at the trusted adapter boundary; missing values
+produce `SECRET_UNAVAILABLE`, forged references `SECRET_REFERENCE_INVALID`.
+JSON, strings and inspect mask the reference; status DTO contains only
+`configured` and `[REDACTED]`. The resolved branded string is still a raw secret:
+never serialize it into a DTO, queue event, browser response or log.
+The architecture guard rejects transitive runtime client imports of SecretRef
+and the existing raw server-environment reader, including
+reexports, aliases and literal dynamic imports; erased types and genuine
+Next server-action RPC boundaries do not ship the server implementation.
+No vault, network/API endpoint or client configuration is added by this primitive.
+`TARGET / REQUIRES CHECK`: adversarial nested/error/log cases and sensitive-source
+lints. Callers never serialize raw secret values; resolve only an owned reference
+at the narrow adapter boundary.
 Value-free names/required conditions belong to [ENVIRONMENT](ENVIRONMENT.md).
 PII inventory and derived retention/legal obligations belong to03; no legal
 compliance, current production backup or universal deletion API is claimed.

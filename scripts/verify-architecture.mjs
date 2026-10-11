@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { checkClientSecretBoundary } from "./client-secret-boundary.mjs";
 
 const rootDir = path.resolve(import.meta.dirname, "..");
 const sourceDir = path.join(rootDir, "src");
@@ -101,6 +102,8 @@ for (const filePath of await collectFiles(sourceDir)) {
     failures.push(`Repository opens a nested principal transaction: ${relativePath}`);
   }
 }
+
+failures.push(...checkClientSecretBoundary(rootDir));
 
 if (failures.length > 0) {
   throw new Error(`Architecture guard failed:\n${failures.join("\n")}`);
