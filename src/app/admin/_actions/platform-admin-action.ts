@@ -3,8 +3,11 @@ import { PlatformOperationsAdminError } from "../../../modules/platform-operatio
 import { ProjectRegistryError } from "../../../modules/project-registry/index.ts";
 import { defineAction } from "../../../platform/actions/define-action.ts";
 import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
+import { optionalModules } from "../../../platform/config/project-identity.ts";
+import { OptionalModuleDisabledError, requireOptionalModule } from "../../../platform/config/optional-modules.ts";
 
 function mapError(error: unknown) {
+  if (error instanceof OptionalModuleDisabledError) return { code: error.code, message: "Эта возможность отключена." };
   const code =
     error instanceof IdentityAdminError
       ? error.code
@@ -41,7 +44,11 @@ export function platformAdminAction<TInput, TResult>(
   execute: (principal: PrincipalContext, input: TInput) => Promise<TResult>,
 ) {
   return defineAction<TInput, TResult>({
-    execute: ({ principal, input }) => execute(principal, input),
+    execute: ({ principal, input }) => {
+      requireOptionalModule(optionalModules, "platformAdmin");
+      if (resource === "operations") requireOptionalModule(optionalModules, "outboxPlusQueue");
+      return execute(principal, input);
+    },
     mapError,
     inputError: {
       code: "PLATFORM_ADMIN_INPUT_INVALID",

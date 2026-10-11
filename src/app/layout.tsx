@@ -1,4 +1,5 @@
-import { publicProjectIdentity } from "../platform/config/project-identity.ts";
+import { publicProjectIdentity, optionalModules } from "../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../platform/config/optional-modules.ts";
 import { ProjectIdentityProvider } from "../components/identity/ProjectIdentityProvider.tsx";
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistration } from "../components/pwa/ServiceWorkerRegistration.tsx";
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   },
   description: publicProjectIdentity.description,
   applicationName: publicProjectIdentity.productName,
-  manifest: "/manifest.webmanifest",
+  manifest: isModuleEnabled(optionalModules, "pwa") ? "/manifest.webmanifest" : undefined,
   keywords: ["CRM", "аналитический кабинет", "внутреннее веб-приложение", "SaaS starter"],
   alternates: {
     canonical: "/",
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
     description: publicProjectIdentity.description,
   },
   appleWebApp: {
-    capable: true,
+    capable: isModuleEnabled(optionalModules, "pwa"),
     title: publicProjectIdentity.productName,
     statusBarStyle: "black-translucent",
   },
@@ -62,7 +63,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className="h-full antialiased">
-      <body className="min-h-full"><ProjectIdentityProvider identity={publicProjectIdentity}><NuqsAdapter>{children}</NuqsAdapter><ServiceWorkerRegistration /><Toaster /></ProjectIdentityProvider></body>
+      <body className="min-h-full"><ProjectIdentityProvider identity={publicProjectIdentity}><NuqsAdapter>{children}</NuqsAdapter><ServiceWorkerRegistration enabled={isModuleEnabled(optionalModules, "pwa")} cachePrefix={`${publicProjectIdentity.productSlug}-shell-`} /><Toaster /></ProjectIdentityProvider></body>
     </html>
   );
 }

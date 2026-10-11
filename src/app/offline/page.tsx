@@ -1,8 +1,12 @@
 import { publicProjectIdentity } from "../../platform/config/project-identity.ts";
+import { optionalModules } from "../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../platform/config/optional-modules.ts";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import styles from "../../components/marketing/StartLanding.module.css";
 
 export default function OfflinePage() {
+  if (!isModuleEnabled(optionalModules, "pwa")) notFound();
   return (
     <main className="theme-public start-landing relative isolate flex min-h-dvh items-center overflow-hidden bg-[var(--ch-bg-deepest)] px-5 py-14 text-[var(--ch-white)] sm:px-6">
       <div className={`${styles.grid} absolute inset-0 -z-20 opacity-70`} aria-hidden />

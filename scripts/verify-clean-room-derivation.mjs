@@ -72,7 +72,8 @@ function trackedFiles(sourceRoot) {
     .filter(Boolean);
 }
 
-export function createDisposableCopy(root, sourceRoot = repositoryRoot) {
+export function createDisposableCopy(root, sourceRoot = repositoryRoot, moduleState = null) {
+  if (moduleState !== null && !["enabled", "disabled", "not_applicable"].includes(moduleState)) throw new Error("Invalid optional-module smoke profile");
   const files = trackedFiles(sourceRoot);
   // Check the original index before copying: the destination .gitignore may
   // otherwise hide a force-added execution artifact from its new Git index.
@@ -113,6 +114,11 @@ export function createDisposableCopy(root, sourceRoot = repositoryRoot) {
       outboundHttp: "disabled", objectStorage: "disabled",
     },
   };
+  if (moduleState) manifest.derivation.optionalModules = {
+    outboxPlusQueue: moduleState, pwa: moduleState, platformAdmin: moduleState,
+    outboundHttp: moduleState === "enabled" ? "disabled" : moduleState,
+    objectStorage: moduleState === "enabled" ? "disabled" : moduleState,
+  };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
@@ -148,6 +154,9 @@ function assertRepositoryContract(root) {
 }
 
 function main() {
+  const args = process.argv.slice(2);
+  if (args.length && (args.length !== 2 || args[0] !== "--modules" || !["enabled", "disabled", "not_applicable"].includes(args[1]))) throw new Error("Usage: derive:smoke [--modules enabled|disabled|not_applicable]");
+  const moduleState = args[1] ?? null;
   // pnpm may choose a different default store for /tmp on another filesystem.
   // Reuse the source install's actual store and keep the copy install offline.
   proofEnvironment.pnpm_config_store_dir = execFileSync(
@@ -157,7 +166,7 @@ function main() {
   ).trim();
   const root = mkdtempSync(path.join(tmpdir(), "ams-clean-room-proof-"));
   try {
-    createDisposableCopy(root);
+    createDisposableCopy(root, repositoryRoot, moduleState);
     run("git", ["init", "--quiet", "--initial-branch=main"], root);
     run("git", ["remote", "add", "origin", derivedRepository], root);
     run("git", ["add", "."], root);
@@ -174,6 +183,8 @@ function main() {
     run("pnpm", ["verify:quick"], root);
     run("pnpm", ["test:unit"], root);
     run("pnpm", ["build"], root);
+    run("pnpm", ["worker:build"], root);
+    run("node", ["scripts/verify-optional-profile.mjs"], root);
     process.stdout.write(`${JSON.stringify({ status: "PASS", disposable: true, published: false, production: false })}\n`);
   } finally {
     rmSync(root, { recursive: true, force: true });

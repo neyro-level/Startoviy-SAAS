@@ -1,4 +1,4 @@
-import { publicProjectIdentity } from "../platform/config/project-identity.ts";
+import { publicProjectIdentity } from "../config/project-identity.ts";
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {

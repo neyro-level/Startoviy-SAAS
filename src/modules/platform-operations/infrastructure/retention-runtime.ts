@@ -1,4 +1,6 @@
 import { RetentionRunStatus } from "../../../generated/prisma/client.ts";
+import { optionalModules } from "../../../platform/config/project-identity.ts";
+import { requireOptionalModule } from "../../../platform/config/optional-modules.ts";
 import { runInSystemJobDatabaseTransaction } from "../../../platform/database/transaction.ts";
 
 const PROCESSED_RETENTION_DAYS = 14;
@@ -15,6 +17,7 @@ function cutoffDate(now: Date, days: number) {
 }
 
 export async function runReliabilityRetention(now = new Date()): Promise<RunRetentionResult> {
+  requireOptionalModule(optionalModules, "outboxPlusQueue");
   const processedCutoff = cutoffDate(now, PROCESSED_RETENTION_DAYS);
   const deadLetterCutoff = cutoffDate(now, DEAD_LETTER_RETENTION_DAYS);
 

@@ -37,7 +37,7 @@ Private policy: noindex/nofollow/nocache, no-store HTTP, excluded from SW/sitema
 | PAGE-008 | `/admin/`, `/admin/{organizations,memberships,projects,operations}/`, dynamic admin | root →organizations; absent principal →login; non-admin →dashboard; invalid resource →404; loading/error/empty/filter/form/conflict | `src/app/admin/page.tsx`, `[resource]/page.tsx`, loading/error, resources.ts; native admin denies and authenticated browser proof |
 | PAGE-009 | `/api/auth/*`, JSON auth | Better Auth GET/POST; missing configuration →503 safe AUTH_UNAVAILABLE; invalid login401 and rate-limit429; signup disabled | `src/app/api/auth/[...all]/route.ts`, auth/security-config; auth-security unit/native/browser proof |
 | PAGE-010 | `/api/health/live`, `/api/health/ready`, JSON health | live reports process; ready checks auth/database/operations; failure503 safe READINESS_FAILED, no secret details | `src/app/api/health/*/route.ts`; platform-http/native health and no-store browser proof |
-| PAGE-011 | `/offline/`, PWA offline surface; unknown URL404 state | public static offline notice; unknown catch-all calls notFound; no private payload fallback | `src/app/offline/page.tsx`, `not-found.tsx`, `[...notFound]/page.tsx`, `public/sw.js`; offline/404/session-cache browser proof |
+| PAGE-011 | `/offline/`, PWA offline surface; unknown URL404 state | enabled PWA offline notice; disabled PWA404; unknown catch-all calls notFound; no private payload fallback | `src/app/offline/page.tsx`, `not-found.tsx`, `[...notFound]/page.tsx`, `src/platform/pwa/service-worker.js`; offline/404/session-cache browser proof |
 
 `VERIFIED — auxiliary source`: `/manifest.webmanifest` from `manifest.ts`,
 `/robots.txt` from `robots.ts`, `/sitemap.xml` from `sitemap.ts`, `/sw.js` and

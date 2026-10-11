@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { optionalModules } from "../../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../../platform/config/optional-modules.ts";
 import {
   PLATFORM_ADMIN_RESOURCES,
 } from "../../../modules/platform-admin/index.ts";
@@ -7,7 +9,7 @@ import { cn } from "../../../shared/lib/cn.ts";
 export function AdminResourceNav({ currentPath }: { currentPath: string }) {
   return (
     <nav aria-label="Разделы администрирования" className="flex flex-wrap gap-2">
-      {PLATFORM_ADMIN_RESOURCES.map((item) => {
+      {PLATFORM_ADMIN_RESOURCES.filter((item) => item.key !== "operations" || isModuleEnabled(optionalModules, "outboxPlusQueue")).map((item) => {
         const active = currentPath === item.href;
         return (
           <Link

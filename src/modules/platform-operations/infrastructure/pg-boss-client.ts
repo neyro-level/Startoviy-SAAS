@@ -1,4 +1,5 @@
 import { projectIdentity } from "../../../platform/config/project-identity.ts";
+import { requireOptionalModule } from "../../../platform/config/optional-modules.ts";
 import { PgBoss } from "pg-boss";
 import { createPgPoolConfigFromEnvironment } from "../../../platform/database/prisma/pool-config.ts";
 import { readDatabaseEnvironment } from "../../../platform/config/server-environment.ts";
@@ -46,6 +47,7 @@ async function ensureQueue(boss: PgBoss) {
 }
 
 export async function getPgBoss(): Promise<PgBoss> {
+  requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
   bossPromise ??= createBoss()
     .start()
     .then(async (boss) => {

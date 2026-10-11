@@ -4,7 +4,7 @@
 boundaries; this file owns the actual derivation interface and verification.
 
 `VERIFIED`: local generator, typed identity and copy-source disposable smoke.
-`TARGET`: representative optional-disabled profiles and independent pilot proof
+`TARGET`: complete optional-profile proof and independent pilot proof
 remain separate requirements; the existing smoke is not yet the whole generator
 proof matrix. No distribution service or production product is created.
 
@@ -52,6 +52,26 @@ and check API evidence separately before a product merge. Generation alone
 does not prove optional-disabled paths or ready-to-release status.
 
 ## ProjectIdentityV2: единственный источник identity
+
+### Optional modules: operational meaning
+
+Only explicit `enabled` activates a capability. `disabled` and `not_applicable`
+both deny execution; unknown/missing states are rejected by the identity schema.
+Dependencies, schema and pure library code remain dormant to preserve the
+authentication, permission and tenant-isolation foundations.
+
+| Module | When off | Activation boundary |
+| --- | --- | --- |
+| `pwa` | No manifest link/install capability; manifest, offline and SW endpoints return404; browser unregisters own previous worker and shell caches | server root metadata, guarded routes and registration |
+| `platformAdmin` | Admin routes404, navigation absent, authenticated server actions deny before mutation | admin routes/action executor; permission checks still apply when enabled |
+| `outboxPlusQueue` | Queue/retention/start commands deny before DB work; generated Compose omits worker/maintenance and outbox timers; readiness explicitly reports disabled while still probing the core database | worker CLI, queue client, retention and maintenance action |
+| `outboundHttp` | No active outbound service or required external environment | explicit capability guard; owned adapter implementation/proof remains a separate task |
+| `objectStorage` | No active bucket service and no S3 environment requirement | explicit capability guard; owned adapter implementation/proof remains a separate task |
+
+Module import smoke is a dormant-library check and may run when outbox is off;
+it neither starts a worker nor proves delivery. A disabled module is never
+reported as a healthy active module. Selecting flags does not authorize
+deployment or remove the requirement for own integration/security proof.
 
 `starter.identity.json` имеет schemaVersion2 и валидируется через
 [identity-contract.ts](../src/platform/config/identity-contract.ts).

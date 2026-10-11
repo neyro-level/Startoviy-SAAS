@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { optionalModules } from "../../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../../platform/config/optional-modules.ts";
 import { KpiCard } from "../../../components/dashboard/KpiCard.tsx";
 import { PageHeader } from "../../../components/dashboard/PageHeader.tsx";
 import { Button } from "../../../components/ui/button.tsx";
@@ -123,6 +125,7 @@ export default async function AdminResourcePageRoute({
   params: Promise<{ resource: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!isModuleEnabled(optionalModules, "platformAdmin")) notFound();
   const cabinetRedirect = await getCurrentCabinetRedirect();
   if (cabinetRedirect) redirect(cabinetRedirect);
 
@@ -136,6 +139,7 @@ export default async function AdminResourcePageRoute({
 
   const { resource } = routeParams;
   if (!isPlatformAdminResourceKey(resource)) notFound();
+  if (resource === "operations" && !isModuleEnabled(optionalModules, "outboxPlusQueue")) notFound();
 
   const query = parsePlatformAdminPageQuery(rawSearchParams);
   const listQuery = toPlatformAdminListQuery(query);

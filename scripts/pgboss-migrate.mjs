@@ -1,5 +1,7 @@
 import { PgBoss } from "pg-boss";
 import pg from "pg";
+import { optionalModules } from "../src/platform/config/project-identity.ts";
+import { isModuleEnabled } from "../src/platform/config/optional-modules.ts";
 import {
   formatDatabaseTargetSummary,
   inspectDatabaseTarget,
@@ -67,6 +69,10 @@ async function grantRuntimePrivileges(databaseOptions, schema, runtimeRole) {
   }
 }
 
+if (!isModuleEnabled(optionalModules, "outboxPlusQueue")) {
+  process.stdout.write("pgboss_schema=disabled\n");
+  process.exit(0);
+}
 const target = inspectDatabaseTarget(process.env);
 process.stdout.write(`database_target=${formatDatabaseTargetSummary(target)}\n`);
 const databaseOptions = readDatabaseOptions(process.env);

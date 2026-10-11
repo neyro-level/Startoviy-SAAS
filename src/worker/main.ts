@@ -1,4 +1,5 @@
 import { projectIdentity } from "../platform/config/project-identity.ts";
+import { requireOptionalModule } from "../platform/config/optional-modules.ts";
 import {
   drainOutbox,
   runOutboxWorker,
@@ -17,6 +18,7 @@ async function main() {
   }
 
   if (command === "outbox-drain") {
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
     const result = await drainOutbox({ workerId: argument ?? projectIdentity.identity.workerId });
     logger.info({ event: "outbox_drain_finished", ...result }, "outbox drain finished");
     if (result.failed > 0) {
@@ -26,6 +28,7 @@ async function main() {
   }
 
   if (command === "outbox-worker") {
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
     const controller = new AbortController();
     const stop = () => controller.abort();
     process.once("SIGINT", stop);
@@ -51,6 +54,7 @@ async function main() {
   }
 
   if (command === "outbox-retention") {
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
     const result = await runReliabilityRetention();
     logger.info({ event: "outbox_retention_finished", ...result }, "outbox retention finished");
     return;

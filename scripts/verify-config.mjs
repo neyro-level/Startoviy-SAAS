@@ -1,8 +1,10 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { isExecutionArtifact } from "./execution-artifact-policy.mjs";
-import createManifest from "../src/app/manifest.ts";
+import createManifest from "../src/platform/pwa/manifest.ts";
+import { GET as manifestResponse } from "../src/app/manifest.webmanifest/route.ts";
 import { parseProjectIdentityJson } from "../src/platform/config/identity-contract.ts";
+import { isModuleEnabled } from "../src/platform/config/optional-modules.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const forbiddenTokens = [
@@ -61,24 +63,29 @@ for (const file of await collectFiles(root)) {
 }
 
 const identityManifest = parseProjectIdentityJson(await readFile(path.join(root, "starter.identity.json"), "utf8"));
-const appManifest = createManifest();
-if (
-  appManifest.name !== identityManifest.identity.productName
-  || appManifest.short_name !== identityManifest.identity.shortName
-  || appManifest.icons?.[0]?.src !== identityManifest.identity.iconPath
-  || appManifest.display !== "standalone"
-) {
-  violations.push("src/app/manifest.ts: PWA manifest must be installable and match starter.identity.json");
+if (isModuleEnabled(identityManifest.derivation.optionalModules, "pwa")) {
+  const appManifest = createManifest();
+  if (
+    appManifest.name !== identityManifest.identity.productName
+    || appManifest.short_name !== identityManifest.identity.shortName
+    || appManifest.icons?.[0]?.src !== identityManifest.identity.iconPath
+    || appManifest.display !== "standalone"
+  ) {
+    violations.push("src/platform/pwa/manifest.ts: PWA manifest must be installable and match starter.identity.json");
+  }
+} else {
+  if (manifestResponse().status !== 404) violations.push("src/app/manifest.webmanifest/route.ts: disabled PWA must close the manifest endpoint");
 }
 
-const serviceWorker = await readFile(path.join(root, "public/sw.js"), "utf8");
+if (await readdir(path.join(root, "public")).then((files) => files.includes("sw.js"))) violations.push("public/sw.js: static worker bypasses optional capability guard");
+const serviceWorker = await readFile(path.join(root, "src/platform/pwa/service-worker.js"), "utf8");
 for (const privatePath of ["/api/", "/admin/", "/dashboard/", "/notifications/"]) {
   if (!serviceWorker.includes(`"${privatePath}"`)) {
-    violations.push(`public/sw.js: missing private cache exclusion ${privatePath}`);
+    violations.push(`src/platform/pwa/service-worker.js: missing private cache exclusion ${privatePath}`);
   }
 }
 if (/cache\.put\(request/.test(serviceWorker) && !serviceWorker.includes("isPrivateRequest(url)")) {
-  violations.push("public/sw.js: cache policy must skip private requests");
+  violations.push("src/platform/pwa/service-worker.js: cache policy must skip private requests");
 }
 
 if (violations.length > 0) {

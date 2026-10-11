@@ -1,5 +1,7 @@
 import { hasPermission, type PrincipalContext } from "../../platform/authorization/principal.ts";
 import { listProjectTreesForUser } from "./server.ts";
+import { optionalModules } from "../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../platform/config/optional-modules.ts";
 
 export type NavigationChild = {
   href: string;
@@ -47,7 +49,7 @@ export async function buildNavigation(
           label: "Рабочая область",
           active: currentPath === "/dashboard/",
         },
-        ...(hasPermission(user, "platform:manage")
+        ...(isModuleEnabled(optionalModules, "platformAdmin") && hasPermission(user, "platform:manage")
           ? [
               {
                 href: "/admin/organizations/",

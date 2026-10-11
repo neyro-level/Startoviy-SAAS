@@ -21,13 +21,13 @@ export const readyHealthSchema = z.object({
     postgresql: z.literal("ready"),
     auth: z.literal("configured"),
     outbox: z.object({
-      status: z.enum(["healthy", "degraded"]),
+      status: z.enum(["healthy", "degraded", "disabled"]),
       pending: z.number().int().nonnegative(),
       processing: z.number().int().nonnegative(),
       deadLetter: z.number().int().nonnegative(),
     }),
     worker: z.object({
-      status: z.enum(["healthy", "stale", "unknown"]),
+      status: z.enum(["healthy", "stale", "unknown", "disabled"]),
       lastHeartbeatAt: z.string().datetime({ offset: true }).nullable(),
     }),
   }),

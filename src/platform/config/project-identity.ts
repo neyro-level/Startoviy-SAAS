@@ -8,3 +8,4 @@ export const projectIdentity = parseProjectIdentityJson(
   readFileSync(path.join(process.cwd(), "starter.identity.json"), "utf8"),
 );
 export const publicProjectIdentity = toPublicProjectIdentity(projectIdentity);
+export const optionalModules = projectIdentity.derivation.optionalModules;

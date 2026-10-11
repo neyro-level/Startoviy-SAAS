@@ -67,6 +67,8 @@ function ownDelivery(source, file, config) {
     return source.replace("REPOSITORY_ROLE = template", "REPOSITORY_ROLE = development")
       .replace(/^DELIVERY_PROFILE = (?:COMMERCIAL|CRITICAL)$/m, `DELIVERY_PROFILE = ${profile}`)
       .replace(/^REPOSITORY_VISIBILITY = private$/m, "REPOSITORY_VISIBILITY = REQUIRES_CHECK")
+      .replace(/^ASYNC = outbox-plus-queue$/m, `ASYNC = ${config.derivation.optionalModules.outboxPlusQueue === "enabled" ? "outbox-plus-queue" : "disabled"}`)
+      .replace(/^PLATFORM_ADMIN = enabled$/m, `PLATFORM_ADMIN = ${config.derivation.optionalModules.platformAdmin === "enabled" ? "enabled" : "disabled"}`)
       .replace(/This repository is a copy-source starter\.[\s\S]*?(?=## Source of truth)/, "This is an independent derived product. Its own identity, database, legal facts, visibility, protected-main settings and delivery permissions require product-owner verification. Template hardening merge/visibility permissions do not transfer. No production action is authorized by generation.\n\n")
       .replace(/The owner approved `template` and `COMMERCIAL` as independent classifications\./, `The product selected development role and \`${profile}\` profile; actual provider protection requires own configuration and API proof.`)
       .replace(/For the approved program, the executor merges each[\s\S]*?derived products establish their own merge permission\./, "Each PR requires review, current exact-head checks and the product owner's merge policy. Verify main afterward. Direct-main/force push and gate bypass are prohibited. Production remains separately authorized.")
@@ -123,8 +125,15 @@ function materializeText(source, file, before, config) {
     result = result.replaceAll(`service === "${to.productSlug}"`, `service === "${to.serviceId}"`)
       .replaceAll(`payload["service"] == "${to.productSlug}"`, `payload["service"] == "${to.serviceId}"`);
   }
+  if (file === "scripts/deploy-production.mjs" && config.derivation.optionalModules.outboxPlusQueue !== "enabled") result = result.replace("up -d web worker", "up -d web");
   if (file === "scripts/release-contract.mjs") result = result.replace(`application: "${to.productSlug}"`, `application: "${to.serviceId}"`);
   if (file === "docker-compose.production.yml") result = result.replace(`name: ${to.productSlug}`, `name: ${to.serviceId}`);
+  if (file === "docker-compose.production.yml" && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
+    const compose = parse(result, { uniqueKeys: true });
+    delete compose.services.worker;
+    delete compose.services.maintenance;
+    result = stringify(compose);
+  }
   if (file.startsWith("ops/systemd/")) result = result.replace(`COMPOSE_PROJECT_NAME=${to.productSlug}`, `COMPOSE_PROJECT_NAME=${to.serviceId}`);
   if (file.startsWith("ops/nginx/")) {
     const port = new URL(to.publicOrigin).port || "443";
@@ -171,15 +180,26 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
   if (sourceManifest.mode !== "starter") throw new Error("Generate from the template, not a business repository");
   if (input?.derivation?.sourceRevision && input.derivation.sourceRevision !== sourceSha) throw new Error("Input sourceRevision differs from sourceSha");
   const config = parseProjectIdentity({ ...input, mode: "derived", derivation: { ...input?.derivation, sourceRevision: sourceSha } });
+  if (["pwa", "platformAdmin", "outboxPlusQueue"].some((name) => config.derivation.optionalModules[name] !== "enabled")) {
+    for (const file of ["src/platform/config/optional-modules.ts", "src/app/sw.js/route.ts", "src/app/manifest.webmanifest/route.ts", "src/platform/pwa/service-worker.js"]) {
+      if (!entries.some((entry) => entry.file === file)) throw new Error("Selected source predates the optional runtime contract");
+    }
+    if (entries.some((entry) => entry.file === "public/sw.js")) throw new Error("Selected source exposes an unguarded static worker");
+  }
   if (config.identity.productSlug === sourceManifest.identity.productSlug || config.derivation.sourceRepository === sourceManifest.derivation.sourceRepository) throw new Error("Product must have its own slug and repository origin");
   const oldIdentity = sourceManifest.identity;
   const oldMarkers = [oldIdentity.productName, oldIdentity.productSlug, oldIdentity.productSlug.replaceAll("-", "_"), oldIdentity.productSlug.replaceAll("-", "_").toUpperCase(), oldIdentity.repositorySlug, new URL(oldIdentity.publicOrigin).hostname];
   if (oldMarkers.some((marker) => JSON.stringify(config).includes(marker))) throw new Error("Input still contains a source identity marker");
   const blobs = readBlobs(root, entries);
   verifyWorkflow(blobs, sourceManifest.derivation.deliveryProfile);
+  const omitted = new Set(entries.filter((entry) => entry.file.startsWith(".sourcecraft/")
+    || (config.derivation.optionalModules.outboxPlusQueue !== "enabled" && [
+      `ops/systemd/${sourceManifest.identity.productSlug}-outbox.service`,
+      `ops/systemd/${sourceManifest.identity.productSlug}-outbox.timer`,
+    ].includes(entry.file))).map((entry) => entry.file));
   const files = []; const names = new Set();
   for (const entry of entries) {
-    if (entry.file.startsWith(".sourcecraft/")) continue;
+    if (omitted.has(entry.file)) continue;
     let destination = entry.file.replaceAll(sourceManifest.identity.productSlug, config.identity.productSlug)
       .replaceAll(path.posix.basename(sourceManifest.identity.iconPath), path.posix.basename(config.identity.iconPath))
       .replaceAll(path.posix.basename(sourceManifest.identity.faviconPath), path.posix.basename(config.identity.faviconPath));
@@ -207,7 +227,7 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
     productSlug: config.identity.productSlug, profile: config.derivation.deliveryProfile,
     target, published: false, production: false,
     files: files.map(({ from, to, mode, sha256 }) => ({ from, to, mode, sha256 })),
-    omitted: entries.filter((entry) => entry.file.startsWith(".sourcecraft/")).map((entry) => entry.file),
+    omitted: [...omitted],
     preserved: [...reserved].filter((file) => entries.some((entry) => entry.file === file)),
   };
   const planHash = hash(JSON.stringify(stable({ ...publicPlan, config })));
