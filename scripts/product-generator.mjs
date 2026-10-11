@@ -20,6 +20,19 @@ const trackedSecret = (file) => file.split("/").some((part) =>
   || /^(?:credentials|id_rsa|id_ed25519)$|\.(?:pem|key|p12|pfx)$/i.test(part));
 const reserved = new Set([".github/workflows/ams-verify.yml", ".github/workflows/ams-verify.yml.lock.json"]);
 
+function githubRepositoryIdentity(value) {
+  try {
+    const scp = /^git@github\.com:(.+)$/i.exec(value);
+    const url = new URL(scp ? `https://github.com/${scp[1]}` : value);
+    if (url.hostname !== "github.com" || url.search || url.hash) return null;
+    const parts = url.pathname.replace(/^\/|\/$/g, "").split("/");
+    if (parts.length !== 2 || parts.some((part) => !/^[a-z0-9_.-]+$/i.test(part) || [".", ".."].includes(part))) return null;
+    const repository = parts[1].replace(/\.git$/i, "");
+    if (!repository || [".", ".."].includes(repository)) return null;
+    return `${parts[0]}/${repository}`.toLowerCase();
+  } catch { return null; }
+}
+
 export function readBlobs(root, entries) {
   const output = execFileSync("git", ["-C", root, "cat-file", "--batch"], {
     input: entries.map((entry) => entry.oid).join("\n") + "\n",
@@ -126,7 +139,9 @@ function materializeText(source, file, before, config) {
     result = result.replaceAll(`service === "${to.productSlug}"`, `service === "${to.serviceId}"`)
       .replaceAll(`payload["service"] == "${to.productSlug}"`, `payload["service"] == "${to.serviceId}"`);
   }
-  if (file === "scripts/deploy-production.mjs" && config.derivation.optionalModules.outboxPlusQueue !== "enabled") result = result.replace("up -d web worker", "up -d web");
+  if ((file === "scripts/deploy-production.mjs" || /^ops\/systemd\/.*-web\.service$/u.test(file)) && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
+    result = result.replaceAll("up -d web worker", "up -d web").replaceAll("stop web worker", "stop web");
+  }
   if (file === "scripts/release-contract.mjs") result = result.replace(`application: "${to.productSlug}"`, `application: "${to.serviceId}"`);
   if (file === "docker-compose.production.yml") result = result.replace(`name: ${to.productSlug}`, `name: ${to.serviceId}`);
   if (file === "docker-compose.production.yml" && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
@@ -137,9 +152,10 @@ function materializeText(source, file, before, config) {
   }
   if (file.startsWith("ops/systemd/")) result = result.replace(`COMPOSE_PROJECT_NAME=${to.productSlug}`, `COMPOSE_PROJECT_NAME=${to.serviceId}`);
   if (file.startsWith("ops/nginx/")) {
-    const port = new URL(to.publicOrigin).port || "443";
-    result = result.replaceAll("listen 443 ssl", `listen ${port} ssl`)
-      .replaceAll("listen [::]:443 ssl", `listen [::]:${port} ssl`);
+    const origin = new URL(to.publicOrigin); const port = origin.port || "443";
+    result = result.replace(/(listen (?:\[::\]:)?)[0-9]+( ssl)/gu, (_match, prefix, suffix) => `${prefix}${port}${suffix}`)
+      .replace(/^\s*proxy_set_header X-Forwarded-(?:Host|Port) [^;\n]+;\n/gmu, "")
+      .replace(/proxy_set_header Host [^;\n]+;/gu, `proxy_set_header Host ${origin.host};\n        proxy_set_header X-Forwarded-Host ${origin.host};\n        proxy_set_header X-Forwarded-Port ${port};`);
   }
   if (["scripts/build-release.mjs", "scripts/deploy-production.mjs", "scripts/inspect-container-images.mjs", "Dockerfile"].includes(file)) {
     result = result.replaceAll(`${to.productSlug}-\${commitSha}.tar.gz`, `${to.artifactPrefix}-\${commitSha}.tar.gz`)
@@ -188,7 +204,9 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
     }
     if (entries.some((entry) => entry.file === "public/sw.js")) throw new Error("Selected source exposes an unguarded static worker");
   }
-  if (config.identity.productSlug === sourceManifest.identity.productSlug || config.derivation.sourceRepository === sourceManifest.derivation.sourceRepository) throw new Error("Product must have its own slug and repository origin");
+  const productRepository = githubRepositoryIdentity(config.derivation.sourceRepository);
+  const sourceRepositories = [sourceManifest.derivation.sourceRepository, textGit(root, "remote", "get-url", "origin")].map(githubRepositoryIdentity);
+  if (!productRepository || config.identity.productSlug === sourceManifest.identity.productSlug || sourceRepositories.includes(productRepository)) throw new Error("Product must have its own slug and repository origin");
   const oldIdentity = sourceManifest.identity;
   const oldMarkers = [oldIdentity.productName, oldIdentity.productSlug, oldIdentity.productSlug.replaceAll("-", "_"), oldIdentity.productSlug.replaceAll("-", "_").toUpperCase(), oldIdentity.repositorySlug, new URL(oldIdentity.publicOrigin).hostname];
   if (oldMarkers.some((marker) => JSON.stringify(config).includes(marker))) throw new Error("Input still contains a source identity marker");

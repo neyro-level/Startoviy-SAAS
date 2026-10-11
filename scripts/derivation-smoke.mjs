@@ -16,6 +16,14 @@ const hash = (value) => createHash("sha256").update(value).digest("hex");
 const git = (root, ...args) => execFileSync("git", ["--no-optional-locks", "-C", root, ...args], { stdio: ["ignore", "pipe", "pipe"], maxBuffer: 16 * 1024 * 1024 });
 const textGit = (root, ...args) => git(root, ...args).toString("utf8").trim();
 
+export function derivationProofStatus(records, expectedRuns) {
+  if (![1, 2].includes(expectedRuns) || records.length !== expectedRuns || !records.every((record) => record.cleanup === "PASS")) return "INCOMPLETE_REPEATABILITY_PROOF";
+  if (records.some((record) => record.native.status !== "PASS" || record.browser.status !== "PASS")) return "LOCAL_PASS_EXTERNAL_PROOF_INCOMPLETE";
+  if (expectedRuns !== 2) return "DIAGNOSTIC_COMPLETE_REPEATABILITY_NOT_PROVEN";
+  if (!records[0].fingerprint || records[0].fingerprint !== records[1].fingerprint) return "INCOMPLETE_REPEATABILITY_PROOF";
+  return "PASS";
+}
+
 export function sourceState(root) {
   const index = path.resolve(root, textGit(root, "rev-parse", "--git-path", "index"));
   return { sha: textGit(root, "rev-parse", "HEAD"), tree: textGit(root, "rev-parse", "HEAD^{tree}"),
@@ -181,7 +189,7 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
       }
     }
     if (JSON.stringify(sourceState(sourceRoot)) !== JSON.stringify(before)) throw new Error("Original source state changed during smoke");
-    evidence.status = evidence.runs.some((record) => record.native.status !== "PASS" || record.browser.status !== "PASS") ? "LOCAL_PASS_EXTERNAL_PROOF_INCOMPLETE" : "PASS";
+    evidence.status = derivationProofStatus(evidence.runs, runs);
     return evidence;
   } catch (error) {
     evidence.status = signal?.aborted ? "CANCELLED" : "FAIL";
@@ -189,6 +197,7 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
     throw Object.assign(error, { evidence });
   }
   finally {
+    evidence.repeatability = evidence.runs.length === 2 && evidence.runs[0].fingerprint && evidence.runs[0].fingerprint === evidence.runs[1].fingerprint ? "PASS" : "NOT_PROVEN";
     evidence.sourceUnchanged = JSON.stringify(sourceState(sourceRoot)) === JSON.stringify(before);
     if (!evidence.sourceUnchanged) evidence.status = "FAIL";
     evidence.cleanup = evidence.runs.every((record) => record.cleanup === "PASS") ? "PASS" : "FAIL";

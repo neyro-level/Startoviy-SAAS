@@ -79,7 +79,9 @@ pinned Docker image; существующая БД и реальные credentia
 `BLOCKED`, общий `LOCAL_PASS_EXTERNAL_PROOF_INCOMPLETE`, никогда полный `PASS`.
 `required` завершает команду с ошибкой при отсутствии обязательного proof;
 `off` явно записывает `NOT_RUN`. `--runs 1` допустим для диагностики и не заменяет
-двухпроходную приёмку. `--modules enabled|disabled|not_applicable` выбирает
+двухпроходную приёмку: даже с native/browser PASS общий verdict остаётся
+`DIAGNOSTIC_COMPLETE_REPEATABILITY_NOT_PROVEN`, repeatability — NOT_PROVEN.
+`--modules enabled|disabled|not_applicable` выбирает
 профиль synthetic Starter proof; derived rehearsal менять свой профиль запрещено.
 
 JSON в stdout/необязательном новом внешнем файле содержит source SHA/tree,

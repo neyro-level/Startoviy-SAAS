@@ -65,6 +65,20 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it.each(["declared-gitless", "declared-case", "actual-gitless", "actual-case", "actual-ssh"])("rejects a template origin alias (%s) before creating a target", (variant) => {
+    const source = sourceFixture(); const config = input(source.root, "origin-proof");
+    const declared = JSON.parse(readFileSync(path.join(source.root, "starter.identity.json"), "utf8")).derivation.sourceRepository;
+    if (variant.startsWith("declared")) {
+      const url = new URL(declared); url.pathname = variant === "declared-gitless" ? url.pathname.replace(/\.git$/i, "") : url.pathname.toUpperCase();
+      config.derivation.sourceRepository = url.toString();
+    } else {
+      config.derivation.sourceRepository = variant === "actual-case" ? "https://github.com/FIXTURE/TEMPLATE.git" : "https://github.com/fixture/template";
+      if (variant === "actual-ssh") git(source.root, "remote", "set-url", "origin", "git@github.com:FIXTURE/TEMPLATE.git");
+    }
+    const target = path.join(source.parent, "independent");
+    expect(() => planProduct({ sourceRoot: source.root, sourceSha: source.sha, targetRoot: target, input: config })).toThrow("own slug and repository origin");
+    expect(existsSync(target)).toBe(false);
+  });
   it.each(["private", "execution", "symlink"])("never discloses a credential-bearing %s source filename", (kind) => {
     const source = sourceFixture(); const config = input(source.root, "private-proof");
     const token = ["gh", "p_", "F".repeat(36)].join("");
@@ -167,6 +181,12 @@ describe("nonpublishing product generator", () => {
     const read = (file: string) => readFileSync(path.join(options.targetRoot, file), "utf8");
     expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("server_name quartz-custom.example.net;");
     expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("listen 8443 ssl");
+    const nginx = read(`ops/nginx/${config.identity.productSlug}.conf`);
+    expect(nginx.match(/proxy_set_header Host quartz-custom\.example\.net:8443;/gu)).toHaveLength(2);
+    expect(nginx.match(/proxy_set_header X-Forwarded-Host quartz-custom\.example\.net:8443;/gu)).toHaveLength(2);
+    expect(nginx.match(/proxy_set_header X-Forwarded-Port 8443;/gu)).toHaveLength(2);
+    expect(nginx).not.toContain("X-Forwarded-Port 443;");
+    expect(nginx).toContain("return 301 https://quartz-custom.example.net:8443$request_uri;");
     expect(read("scripts/local-dev.mjs")).toContain('service === "atlas-web"');
     expect(read("scripts/build-release.mjs")).toContain("atlas-artifact-${commitSha}.tar.gz");
     expect(read("scripts/sql/prepare-rls-test-identities.sql")).toContain("atlas_db_web");
@@ -196,6 +216,12 @@ describe("nonpublishing product generator", () => {
     const compose = parse(read("docker-compose.production.yml"));
     expect(Object.keys(compose.services).sort()).toEqual(["migrate", "web"]);
     expect(read("scripts/deploy-production.mjs")).not.toContain("up -d web worker");
+    const unit = read(`ops/systemd/${config.identity.serviceId}-web.service`);
+    expect(unit).not.toContain("up -d web worker");
+    expect(unit).not.toContain("stop web worker");
+    const commands = unit.split("\n").filter((line) => /^Exec(?:Start|Reload|Stop)=/u.test(line));
+    expect(commands).toHaveLength(3);
+    for (const command of commands) expect(command.match(/(?:up -d|stop) (.+)$/u)?.[1]).toBe("web");
     expect(existsSync(path.join(options.targetRoot, `ops/systemd/${config.identity.productSlug}-outbox.timer`))).toBe(false);
     expect(read("docs/03_ARCHITECTURE.md")).toContain("ASYNC = disabled");
     expect(read("docs/03_ARCHITECTURE.md")).toContain("PLATFORM_ADMIN = disabled");
