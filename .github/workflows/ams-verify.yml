@@ -1,0 +1,91 @@
+name: Shared exact SHA verification
+on:
+  workflow_call:
+    inputs:
+      expected_sha:
+        required: true
+        type: string
+      node_version:
+        required: true
+        type: string
+      pnpm_version:
+        required: true
+        type: string
+      command:
+        required: true
+        type: string
+      container_image:
+        default: ''
+        type: string
+      environment_json:
+        default: '{}'
+        type: string
+permissions:
+  contents: read
+jobs:
+  validate-inputs:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate caller and immutable container before any container starts
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          CALLER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CONTAINER_IMAGE: ${{ inputs.container_image }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$CALLER_SHA"
+          if [ -n "$CONTAINER_IMAGE" ]; then
+            [[ "$CONTAINER_IMAGE" =~ ^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$ ]]
+          fi
+  run-contract:
+    needs: validate-inputs
+    runs-on: ubuntu-24.04
+    container: ${{ inputs.container_image || null }}
+    env:
+      EXPECTED_COMMIT_SHA: ${{ inputs.expected_sha }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.expected_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ inputs.node_version }}
+      - name: Validate exact caller candidate
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_sha }}
+          CALLER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PNPM_VERSION: ${{ inputs.pnpm_version }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$PNPM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$EXPECTED_COMMIT_SHA" = "$CALLER_SHA"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT_SHA"
+          corepack enable
+          corepack prepare "pnpm@$PNPM_VERSION" --activate
+          pnpm install --frozen-lockfile --reporter=append-only
+      - name: Project contract verification
+        shell: bash
+        env: ${{ fromJSON(inputs.environment_json) }}
+        run: ${{ inputs.command }}
+  verify:
+    needs: [validate-inputs, run-contract]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail required gate when validation or contract failed or skipped
+        shell: bash
+        env:
+          VALIDATION_RESULT: ${{ needs.validate-inputs.result }}
+          CONTRACT_RESULT: ${{ needs.run-contract.result }}
+        run: |
+          set -euo pipefail
+          test "$VALIDATION_RESULT" = success
+          test "$CONTRACT_RESULT" = success

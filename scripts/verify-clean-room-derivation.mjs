@@ -15,8 +15,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyDerivation } from "./verify-derivation.mjs";
+import { validateGithubPolicy } from "./ci/verify-github-policy.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const derivedRepository = "https://github.com/clean-room/atlas-portal.git";
 const sample = {
   productName: "Atlas Portal",
   productSlug: "atlas-portal",
@@ -71,6 +73,8 @@ function trackedFiles() {
 
 function createDisposableCopy(root) {
   for (const relativePath of trackedFiles()) {
+    // The default derived product uses GitHub; a SourceCraft mirror is opt-in.
+    if (relativePath.startsWith(".sourcecraft/")) continue;
     const source = path.join(repositoryRoot, relativePath);
     if (!existsSync(source)) continue;
     const destination = path.join(root, transform(relativePath));
@@ -86,7 +90,7 @@ function createDisposableCopy(root) {
   manifest.mode = "derived";
   manifest.identity = sample;
   manifest.derivation = {
-    sourceRepository: "https://git.sourcecraft.dev/clean-room/atlas-portal.git",
+    sourceRepository: derivedRepository,
     defaultBranch: "main",
     deliveryProfile: "COMMERCIAL",
     migrationOwner: sample.productSlug,
@@ -103,13 +107,16 @@ function assertRepositoryContract(root) {
   const branch = execFileSync("git", ["branch", "--show-current"], { cwd: root, encoding: "utf8" }).trim();
   const remote = execFileSync("git", ["remote", "get-url", "origin"], { cwd: root, encoding: "utf8" }).trim();
   if (branch !== "main") throw new Error(`Derived default branch mismatch: ${branch}`);
-  if (remote !== "https://git.sourcecraft.dev/clean-room/atlas-portal.git") {
+  if (remote !== derivedRepository) {
     throw new Error("Derived repository origin mismatch.");
   }
-  const policy = readFileSync(path.join(root, ".sourcecraft/branches.yaml"), "utf8");
-  for (const rule of ["prevent_force_push", "prevent_non_pr_changes", "prevent_deletion"]) {
-    if (!policy.includes(rule)) throw new Error(`Derived branch policy is missing ${rule}.`);
-  }
+  if (existsSync(path.join(root, ".sourcecraft"))) throw new Error("GitHub-only copy inherited an optional mirror.");
+  validateGithubPolicy(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"), {
+    nodeVersion: readFileSync(path.join(root, ".node-version"), "utf8").trim(),
+    packageManager: JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).packageManager,
+    vendorWorkflow: readFileSync(path.join(root, ".github/workflows/ams-verify.yml"), "utf8"),
+    vendorLock: JSON.parse(readFileSync(path.join(root, ".github/workflows/ams-verify.yml.lock.json"), "utf8")),
+  });
   const architecture = readFileSync(path.join(root, "docs/03_ARCHITECTURE.md"), "utf8");
   if (!architecture.includes("DELIVERY_PROFILE = COMMERCIAL")) {
     throw new Error("Derived delivery profile transition was not recorded.");
@@ -129,7 +136,7 @@ function main() {
   try {
     createDisposableCopy(root);
     run("git", ["init", "--quiet", "--initial-branch=main"], root);
-    run("git", ["remote", "add", "origin", "https://git.sourcecraft.dev/clean-room/atlas-portal.git"], root);
+    run("git", ["remote", "add", "origin", derivedRepository], root);
     run("git", ["add", "."], root);
     run("git", ["-c", "user.name=Clean Room Proof", "-c", "user.email=proof@localhost", "commit", "--quiet", "-m", "Initialize derived product"], root);
 

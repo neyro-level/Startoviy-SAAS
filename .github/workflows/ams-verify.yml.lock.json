@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "source_repository": "neyro-level/AMS_DELIVERY_CORE",
+  "source_sha": "a39227c11a017bf126d3ba416f8dd5da7ff24449",
+  "source_path": ".github/workflows/verify.yml",
+  "sha256": "5d621df70df4ea6b205762f98f4035500c1a06dbb777cf68fcfe2f3d035e1ea8"
+}

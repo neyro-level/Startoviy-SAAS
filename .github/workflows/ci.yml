@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   commercial-gate:
-    uses: neyro-level/AMS_DELIVERY_CORE/.github/workflows/verify.yml@a39227c11a017bf126d3ba416f8dd5da7ff24449
+    uses: ./.github/workflows/ams-verify.yml
     with:
       expected_sha: ${{ github.event.pull_request.head.sha || github.sha }}
       node_version: 24.20.0

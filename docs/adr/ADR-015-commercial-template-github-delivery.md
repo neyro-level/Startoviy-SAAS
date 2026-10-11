@@ -15,6 +15,10 @@ without owning delivery or becoming a prerequisite for GitHub verification.
 The active exact-head contract is owned by `03_ARCHITECTURE.md`. Shared workflow
 revisions are immutable reviewed SHAs. Checks must reject stale heads, missing
 reports, skipped contracts and failures; existing stricter protection stays.
+When caller visibility prevents access to the private shared workflow, use
+Delivery Core's byte-exact vendor with source SHA/checksum provenance lock.
+Validate provenance as part of the project gate; retain the same readonly
+exact-head checks and required context. Do not publish the shared repository.
 Onboarding may apply the approved required context to main after it succeeds on
 the candidate PR, before owner merge. This avoids an unprotected bootstrap merge.
 The central portfolio records this template contract through its own reviewed PR;

@@ -46,16 +46,22 @@ one-way mirror with no independent CI or release authority. See ADR-015.
 Legacy SourceCraft/EXPERIMENT decisions are superseded for current delivery.
 
 Runtime is Node **24.20.0** and pnpm **11.5.1**, installed from the frozen
-lockfile. The private reusable verifier is pinned to reviewed
+lockfile. The reusable verifier is pinned to reviewed
 `neyro-level/AMS_DELIVERY_CORE` revision
-`a39227c11a017bf126d3ba416f8dd5da7ff24449`. The consumer binds `expected_sha`
+`a39227c11a017bf126d3ba416f8dd5da7ff24449`. The consumer calls the byte-exact
+local vendor `.github/workflows/ams-verify.yml`; its companion provenance lock
+and policy validator bind both source SHA and checksum. Public callers cannot
+use a private cross-repository workflow. This Delivery Core vendor mechanism
+works with either visibility without publishing the shared repository.
+The consumer binds `expected_sha`
 to the current PR head (or canonical push SHA); it must check out that exact
 commit with read-only permissions and no inherited secrets. Required context
 is `commercial-gate / verify`, including an always-running failure gate.
 
 The project contract preserves quick/config/architecture checks, unit and
 security tests, secret scanning, native PostgreSQL 18 foundation/auth/RLS/
-atomicity/outbox proof, worker build/smoke, browser checks and build. Security
+atomicity/outbox proof, worker build/smoke, GitHub-only clean-room derivation,
+browser checks and build. Security
 and dependency scans remain relevant proof for shipped artifacts. Disposable
 test resources use literal loopback and dedicated test identities; production
 credentials, managed databases and production runners are excluded. A static

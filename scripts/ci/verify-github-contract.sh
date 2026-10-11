@@ -58,6 +58,7 @@ pnpm test:integration
 pnpm worker:build
 pnpm worker:module-smoke
 pnpm build
+pnpm derive:smoke
 
 # The e2e runner requires an env file; only synthetic, disposable test values
 # go here. Production configuration and repository secrets are never loaded.
