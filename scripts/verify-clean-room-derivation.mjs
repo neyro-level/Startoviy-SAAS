@@ -39,6 +39,7 @@ const proofEnvironment = {
 };
 const replacements = [
   [["https://", "ams", "-start.example"].join(""), sample.publicOrigin],
+  [["ams", "-start.example"].join(""), new URL(sample.publicOrigin).hostname],
   [["ams", "-microsaas-starter"].join(""), sample.repositorySlug],
   [["ams", "-favicon"].join(""), `${sample.productSlug}-favicon`],
   [["AMS", "_START"].join(""), "ATLAS_PORTAL"],

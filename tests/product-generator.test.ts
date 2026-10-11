@@ -144,13 +144,13 @@ describe("nonpublishing product generator", () => {
     const source = sourceFixture();
     const config = input(source.root, "atlas-portal");
     Object.assign(config.identity, {
-      productName: 'Atlas "Team" & Partners', publicOrigin: "https://atlas.example.com:8443",
+      productName: 'Atlas "Team" & Partners', publicOrigin: "https://quartz-custom.example.net:8443",
       serviceId: "atlas-web", databaseApplicationPrefix: "atlas-db", artifactPrefix: "atlas-artifact",
     });
     const options = { sourceRoot: source.root, sourceSha: source.sha, targetRoot: path.join(source.parent, "custom"), input: config };
     const plan = planProduct(options); applyProduct(options, plan.planHash);
     const read = (file: string) => readFileSync(path.join(options.targetRoot, file), "utf8");
-    expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("server_name atlas.example.com;");
+    expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("server_name quartz-custom.example.net;");
     expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("listen 8443 ssl");
     expect(read("scripts/local-dev.mjs")).toContain('service === "atlas-web"');
     expect(read("scripts/build-release.mjs")).toContain("atlas-artifact-${commitSha}.tar.gz");
@@ -169,6 +169,24 @@ describe("nonpublishing product generator", () => {
     expect(() => applyProduct(options, plan.planHash)).toThrow("excludes permanent");
     expect(existsSync(options.targetRoot)).toBe(false);
     expect(git(source.root, "rev-parse", "HEAD")).toBe(options.sourceSha);
+  });
+
+  it.each(["disabled", "not_applicable"] as const)("omits active outbox services and timers for %s", (state) => {
+    const source = sourceFixture();
+    const config = input(source.root, "atlas-portal");
+    for (const name of ["outboxPlusQueue", "pwa", "platformAdmin", "outboundHttp", "objectStorage"]) config.derivation.optionalModules[name] = state;
+    const options = { sourceRoot: source.root, sourceSha: source.sha, targetRoot: path.join(source.parent, "off"), input: config };
+    const plan = planProduct(options); applyProduct(options, plan.planHash);
+    const read = (file: string) => readFileSync(path.join(options.targetRoot, file), "utf8");
+    const compose = parse(read("docker-compose.production.yml"));
+    expect(Object.keys(compose.services).sort()).toEqual(["migrate", "web"]);
+    expect(read("scripts/deploy-production.mjs")).not.toContain("up -d web worker");
+    expect(existsSync(path.join(options.targetRoot, `ops/systemd/${config.identity.productSlug}-outbox.timer`))).toBe(false);
+    expect(read("docs/03_ARCHITECTURE.md")).toContain("ASYNC = disabled");
+    expect(read("docs/03_ARCHITECTURE.md")).toContain("PLATFORM_ADMIN = disabled");
+    expect(existsSync(path.join(options.targetRoot, "src/platform/auth/auth.ts"))).toBe(true);
+    expect(existsSync(path.join(options.targetRoot, "src/worker/main.ts"))).toBe(true);
+    expect(verifyDerivation({ root: options.targetRoot, manifestPath: path.join(options.targetRoot, "starter.identity.json") })).toEqual([]);
   });
 
   it("rejects destinations in the source, tracked credentials and inherited execution records", () => {
