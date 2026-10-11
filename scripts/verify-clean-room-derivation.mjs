@@ -132,6 +132,13 @@ function assertRepositoryContract(root) {
 }
 
 function main() {
+  // pnpm may choose a different default store for /tmp on another filesystem.
+  // Reuse the source install's actual store and keep the copy install offline.
+  proofEnvironment.pnpm_config_store_dir = execFileSync(
+    process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "pnpm",
+    process.platform === "win32" ? ["/d", "/s", "/c", "pnpm store path"] : ["store", "path"],
+    { cwd: repositoryRoot, encoding: "utf8" },
+  ).trim();
   const root = mkdtempSync(path.join(tmpdir(), "ams-clean-room-proof-"));
   try {
     createDisposableCopy(root);
