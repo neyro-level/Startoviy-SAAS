@@ -20,7 +20,7 @@ No historical run verdict or task status is inherited as current product proof.
 | commercial exact-head delivery | GitHub workflow/vendor/provenance, ADR-015 | verify:delivery-policy + actual commercial-gate / verify on current exact SHA/protection API | static configuration PASS never provider attestation |
 | immutable runtime/recovery | Docker/Compose/release/ops recipes | release-template/contracts, actual non-root image/scans, disposable backup/restore/rollback | no starter host, registry, production artifacts or release authority |
 | UI/PWA/safe errors |02/06, routes/primitives/SW, ADR-012 | security/unit/build/E2E, authenticated/offline/cache/a11y matrix | all enabled states require matching proof |
-| independent copy-source / generator | DERIVATION and disposable derived repository | derive:smoke; deterministic generator and independent CRM pilot target proof | own GitHub/profile/facts, no SourceCraft prerequisite or history cleanup |
+| independent copy-source / generator | DERIVATION and disposable derived repository | derive:smoke exact-SHA generator/rehearsal; independent CRM pilot remains target | own GitHub/profile/facts, no SourceCraft prerequisite or history cleanup |
 | final source/runtime agreement | this map,05, conformance verifier | verify:conformance with clean final main + all required actual runs | exact SHA/tree, no combined stale branch evidence |
 
 ## Verify command matrix
@@ -33,7 +33,7 @@ No historical run verdict or task status is inherited as current product proof.
 | native database composition | `pnpm test:integration` | guarded two clean runs/reverse order and local safe JSON summary |
 | browser regression | `pnpm test:e2e:run` | guarded database lifecycle and built app; actual defined scenarios/widths only |
 | local release-equivalent candidate | `pnpm verify:release` | daily suite then static conformance/runtime; no rollout/publish |
-| independent copied product | `pnpm derive:smoke` | disposable frozen install/quick/unit/build; copy deleted, not published |
+| independent copied product | `pnpm derive:smoke` | two deterministic copies, frozen install/Prisma/quick/unit/build/HTTP and applicable native/browser; missing proof BLOCKED, copies deleted |
 | static artifact contract | `pnpm verify:release-template` | example connection budget, not provider backup/live image proof |
 
 `verify:release` does not publish/deploy or implicitly start Docker. Actual
@@ -52,7 +52,7 @@ not in template documentation. A script name is not an executed result.
 - Baseline image/package findings require fresh scans on the real rebuilt
   candidate; historical findings/verdicts are preserved in Git/tracker, not
   permission to publish. Unfixed risk requires explicit bounded product decision.
-- Setup/selection UI, project grants, safe adapters, generator/pilot and full
+- Setup/selection UI, project grants, safe adapters, independent pilot and full
   recovery targets remain unproved until their implementations/checks complete.
   The presence of this document asserts none of those outcomes.
 - Nonempty identity replacements do not prove real legal/fact/media readiness.

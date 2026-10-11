@@ -3,10 +3,10 @@
 **Status:** Active extension. PRD owns product/facts; Architecture owns optional
 boundaries; this file owns the actual derivation interface and verification.
 
-`VERIFIED`: local generator, typed identity and copy-source disposable smoke.
-`TARGET`: complete optional-profile proof and independent pilot proof
-remain separate requirements; the existing smoke is not yet the whole generator
-proof matrix. No distribution service or production product is created.
+`VERIFIED`: typed identity, exact-SHA generator, runtime guards for core optional
+modules and repeatable disposable native/browser smoke. An independent domain
+pilot and future HTTP/storage adapters still need their own proof. No historical
+run verdict establishes readiness of a newly generated product.
 
 ## Локальный generator: dry-run → apply
 
@@ -50,6 +50,43 @@ own product authority: Starter's temporary-public and autonomous-merge program
 permissions do not transfer. Register/configure actual GitHub protected main
 and check API evidence separately before a product merge. Generation alone
 does not prove optional-disabled paths or ready-to-release status.
+
+## Disposable proof: два прогона
+
+```bash
+pnpm derive:smoke --native required --browser required --evidence /outside/source/proof.json
+```
+
+По умолчанию выполняются два прогона. Starter запускает настоящий generator
+из чистого текущего SHA; производный продукт репетирует собственный immutable
+source без замены identity, migrationOwner или profile. В каждом прогоне:
+повторный dry-run, сравнение постоянных файлов, negative restored identity,
+frozen offline install, Prisma generate/validate, docs/quick/unit, web/worker
+build, проверки HTTP и выбранных модулей. Установленные PostgreSQL18 и Chromium
+добавляют native integration и браузерный путь. Активный outbox проверяется
+полным clean/repeated-reverse набором; отключённый — применимыми core suites.
+
+PostgreSQL получает отдельный кластер, literal loopback и собственные `_test`
+role/database. Используются доступные native18 tools либо заранее загруженный
+pinned Docker image; существующая БД и реальные credentials не используются.
+Браузер должен соответствовать frozen Playwright: установите его заранее через
+`pnpm exec playwright install chromium`. Для offline install предварительно
+нужен populated pnpm store той же версии lockfile.
+
+`--native auto` и `--browser auto` — defaults: отсутствие prerequisites даёт
+`BLOCKED`, общий `LOCAL_PASS_EXTERNAL_PROOF_INCOMPLETE`, никогда полный `PASS`.
+`required` завершает команду с ошибкой при отсутствии обязательного proof;
+`off` явно записывает `NOT_RUN`. `--runs 1` допустим для диагностики и не заменяет
+двухпроходную приёмку. `--modules enabled|disabled|not_applicable` выбирает
+профиль synthetic Starter proof; derived rehearsal менять свой профиль запрещено.
+
+JSON в stdout/необязательном новом внешнем файле содержит source SHA/tree,
+slug/profile, exact package/runtime versions, file fingerprints, checks,
+`PASS`/`FAIL`/`BLOCKED`/`CANCELLED`, sourceUnchanged и cleanup. Файл не должен быть
+внутри source или существовать до запуска. Legal inputs, environment values и
+secrets в evidence не входят. SIGINT/SIGTERM останавливают owned process groups;
+свои temp repositories, DB/volumes удаляются при успехе, ошибке и отмене.
+Smoke не публикует repository, не создаёт внешний ресурс и не делает deploy.
 
 ## ProjectIdentityV2: единственный источник identity
 
@@ -117,80 +154,78 @@ approval или release authority. SourceRepository здесь задаёт но
 origin продукта; sourceRevision — commit шаблона, из которого создана копия.
 Core auth/tenant не отключаются. Module states
 `enabled/disabled/not_applicable` заданы для outboxPlusQueue, pwa,
-platformAdmin, outboundHttp и objectStorage; наличие flags не доказывает
-runtime отключение. Принудительные guards/negative profile proof — TARGET
-до соответствующей реализации. Web/worker artifacts обязаны содержать свой
+platformAdmin, outboundHttp и objectStorage. Core optional guards и negative
+profile checks реализованы; каждый новый продукт повторяет их на своём SHA.
+HTTP/storage adapters остаются отдельными implementation/proof targets. Web/worker artifacts обязаны содержать свой
 validated manifest, не читают файл соседнего продукта.
 Identity is selected before build and stays immutable in the artifact; changing
 JSON requires rebuilding/rechecking the product, not editing a running image.
 
-## Новый производный repository
+## Ввод нового SaaS: Solo + AI
 
-1. Создайте новый repository из принятого чистого commit starter с собственной Git identity. Выберите только постоянный tracked source/canon, исключая execution artifacts; не наследуйте его
-   production branch, deployment host, database или secrets.
-2. Переименуйте файлы и пути, содержащие starter slug, включая Compose,
-   systemd, Nginx, backup и asset names.
-3. В `starter.identity.json` установите `mode: "derived"` и замените каждое
-   поле `identity` значениями нового продукта. Заполните блок `derivation`:
-   собственный repository, default branch, `DELIVERY_PROFILE`, владельца
-   migration baseline и решение `enabled`/`disabled`/`not_applicable` по каждому optional module.
-4. Замените starter identity во всех application, documentation, operation и
-   legal files. Derived identity verifier не пропускает legal `TODO:`;
-   placeholders допустимы только в режиме starter. Подтверждение реальных
-   юридических фактов остаётся отдельным release условием.
-5. Создайте собственные secrets только через approved Secret Master project;
-   не переносите `.env.local`, database URLs, tokens или credentials.
-6. Настройте product-specific PostgreSQL roles/topology и exact-head GitHub
-   delivery gate согласно выбранному `DELIVERY_PROFILE`.
-7. Выберите свой repository role/profile и merge permissions; текущая программа
-   Starter не даёт производному продукту автоматическое разрешение merge/release.
-   Запустите `pnpm derive:verify`. Он не пропустит starter slug, example
-   origin или legal placeholder в tracked text file либо имени файла.
-8. До первого product-кода выполните `pnpm derive:smoke`: verification-only
-   сценарий создаст одноразовую копию, новую локальную Git identity с GitHub origin, без SourceCraft configuration, установит
-   frozen offline зависимости из локального pnpm store и запустит Prisma, quick, unit и build.
-   Это не генератор продукта: результат всегда удаляется и не публикуется.
-9. Пройдите `HANDOVER.md`, выполните обязательные проверки производного
-   продукта и создайте отдельный PR. Сам starter не выпускается в production.
+Начните с [docs map](README.md), нужных разделов01/02/03/06 и этого интерфейса.
+`HANDOVER.md` содержит карту гарантий и передачу продукта;05 владеет приёмкой.
+Манифест — источник уже выбранных identity, profile и module states; AI не
+запрашивает их повторно и не выводит их из истории чата.
 
-## Обязательные решения копии
+1. **Вход владельца.** Выберите собственные slug/name, canonical HTTPS origin,
+   operational IDs, GitHub repository, COMMERCIAL или CRITICAL, module states
+   и владельца migrations. Подготовьте ProjectIdentityV2 JSON вне source без
+   secrets. Legal inputs берите из подтверждаемых источников владельца;
+   отсутствие данных оставьте блокером, не заполняйте вымышленными реквизитами.
+   `legalReferences.status` остаётся REQUIRES_CHECK до фактической проверки.
+2. **Создание локальной копии.** Зафиксируйте полный принятый template SHA и
+   отсутствующий target с существующим parent. Выполните dry-run/apply из
+   раздела generator выше; проверьте hash, paths, profile, omitted files.
+   Результат — новый local main, один commit и own origin. Публикация remote
+   и изменение GitHub settings являются отдельными действиями владельца.
+3. **Ручной ресурсный узел.** После отдельной авторизации создайте новую БД,
+   собственные runtime/migrator/backup roles и новый Secret Master scope.
+   Не используйте starter/другой продукт как fallback, не переносите `.env.local`.
+   Список required-if/default/scope берите из [ENVIRONMENT](ENVIRONMENT.md).
+   Недоступный ресурс фиксируется как BLOCKED с условием продолжения; generator
+   и smoke этого действия не выполняют. Тесты используют отдельную `_test` БД.
+4. **Домен и канон.** Назначьте owner нового domain module, его границы,
+   permissions и tenant/project policy в03/ADR, а требования/страницы/дизайн/
+   факты/приёмку — у единственных owners из docs map. Реализуйте через facade,
+   command, transaction-bound repositories и post-commit side effects.
+   Auth/TOTP/tenant foundation сохраняйте; проектные grants и новые adapters
+   требуют собственной реализации и negative proof. Не создавайте duplicate
+   AGENTS, пустые клиентские досье или копию истории задач Starter.
+5. **Приёмка копии.** В новом repository выполните derive:verify, docs:check,
+   verify:quick, unit/security, build и guarded native integration/browser.
+   Запустите двухпроходный derive:smoke с required prerequisites; scoped/off
+   диагностика не заменяет полный applicable proof. Проверьте disabled paths,
+   identity остатки и отсутствие execution/secrets artifacts. Используйте
+   [HANDOVER](HANDOVER.md) и [05](05_RELEASE_CHECKLIST.md), записывая только
+   фактически выполненные проверки текущего SHA в собственном tracker/PR.
+6. **PR и main.** Установите собственный exact-head GitHub gate, protected main
+   и merge procedure. Проведите review, дождитесь green required checks точного
+   head SHA и объединяйте только при разрешённой владельцем процедуре. Проверьте
+   новый canonical main. Разрешение автономного merge этой программы Starter
+   и временный public не наследуются производным продуктом.
+7. **Production отдельно.** Собственные legal/facts, immutable artifacts,
+   recovery и live/user-flow proof завершают05. Production требует отдельной
+   явной команды владельца. Сгенерированная копия, синтаксически заполненные
+   поля и local PASS не означают готовность клиента или разрешённый release.
 
-- `outboxPlusQueue`: оставить сильной асинхронной основой или явно отключить;
-- `pwa`: оставить install/offline shell либо удалить вместе с cache namespace;
-- `platformAdmin`: оставить только при явной operational ownership модели;
-- migration baseline: новая копия владеет перенесёнными migrations и заменяет
-  starter database roles/application names до первого применения;
-- delivery: новый продукт выбирает собственный профиль и не наследует
-  готовность или release authority starter автоматически.
+## Остановки и ошибки
 
-## Что проверяет verifier
+| Ситуация | Действие |
+| --- | --- |
+| Dirty source, отсутствующий SHA, symlink/private source, существующий target | Исправить вход; не перезаписывать чужую работу и не обходить refusal |
+| Apply hash отличается | Повторить dry-run для текущих inputs/target/SHA и проверить новый hash |
+| Manifest invalid или residue в legal/SQL/config/assets/docs | Исправить у владельца источника; не расширять allowlist и не маскировать placeholder |
+| Нет offline store, PG18 или frozen Chromium | Подготовить prerequisite; BLOCKED/NOT_RUN не считать PASS |
+| Нет actual provider gate/permission или legal/recovery proof | Сохранить проверенный candidate, продолжать независимую работу; не merge/release без обязательного условия |
+| Smoke FAIL/CANCELLED или cleanup FAIL | Проверить внешний evidence; восстановить только свои ресурсы, повторить proof после исправления |
 
-Verifier читает только tracked text files и credential-free identity manifest.
-Он не открывает secret manager, `.env.local`, database или remote deployment.
-Это делает clean-room smoke повторяемым: успешный прогон доказывает, что
-копия не сохранила скрытую identity starter.
+## Граница наследования
 
-## Граница наследования и фактическая конфигурация
-
-Copy/generator never inherits Backlog, .beads, task-manager stores, temporary
-master-plans/inventories, execution/approval/review snapshots, local reports,
-.env.local, runtime data, artifacts or original Git/remote identity. Current
-tracked canon contains no old execution plan and docs:check rejects inherited
-execution files. Existing smoke copies tracked permanent sources only, creates
-a new Git identity and validates GitHub-only delivery. The future generator
-must enforce the same boundary automatically; a new owner is never asked to
-clean a historical dossier. Git retains original template history for review,
-but a new product does not inherit it as tasks or readiness evidence.
-
-[ENVIRONMENT](ENVIRONMENT.md) owns actual variable required-if/default/scope
-and flags legacy/example names that are not runtime inputs. Do not assume
-blank auth variables enable login, OUTBOX_WORKER_ID env is wired, or backup S3
-variables configure an application storage adapter. Current optional decisions
-are outboxPlusQueue/pwa/platformAdmin/outboundHttp/objectStorage; runtime guards
-и disabled profile tests остаются TARGET до их реализации. No real secrets, bucket,
-provider, legal approval or production database are created by derive smoke.
-
-A fresh derived copy must pass docs/config/identity/quick/unit/build and its
-own protected exact-head gate. Nonempty legal replacements are syntactic
-inputs; source-backed real facts/legal/media approval and permitted release
-remain separate under [05](05_RELEASE_CHECKLIST.md) and [HANDOVER](HANDOVER.md).
+Generator переносит только постоянный source/canon. Backlog, .beads,
+task-manager stores, temporary master-plans/inventories, execution/approval/
+review snapshots, local reports, env/private files, runtime data и старая
+Git history не входят в новую копию. docs:check и derive:verify проверяют эту
+границу; новому владельцу не поручается удалять документы старой программы.
+Нейтральные документы остаются самостоятельным каноном продукта с собственными
+inputs. Старая проверка шаблона не становится текущим proof производного SaaS.
