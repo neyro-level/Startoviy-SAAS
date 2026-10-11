@@ -13,8 +13,8 @@
       starter credentials or database are never reused.
 - [ ] Set production DB, migration and runtime identities; runtime has no DDL
       or `BYPASSRLS` privilege.
-- [ ] Configure a manual exact-head SourceCraft merge gate; push and PR remain
-      zero-CI.
+- [ ] Configure an exact-head GitHub merge gate and verify required checks and
+      PR-only main protection through the provider API.
 - [ ] Build one immutable artifact set with separate non-root web, worker and
       migrator images from reviewed canonical `main` SHA; do not build on the
       production host.

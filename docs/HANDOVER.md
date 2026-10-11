@@ -4,7 +4,7 @@
 **Repository role:** reusable copy-source starter; not a production target
 
 This document closes the neutral hardening program without turning the starter
-into a product or generator. Evidence is valid only for the exact clean Git SHA
+into a production product. Evidence is valid only for the exact clean Git SHA
 printed by `pnpm verify:conformance`. A derived repository owns every later
 product, infrastructure, legal and release decision.
 
@@ -18,7 +18,7 @@ product, infrastructure, legal and release decision.
 | atomic commands, audit and idempotency | command/repository boundary, E04 | command unit and PostgreSQL rollback scenarios | product commands are added only in the derived repository |
 | outbox-plus-queue reliability | platform operations worker, E05 | competing lease, retry, dead-letter and shutdown tests | shipped disabled-by-deployment until a product owns consumers |
 | cross-contract database evidence | guarded integration runner, E06 | repeated forward/reverse `pnpm test:integration` | evidence is local and secret-free, not CI attestation |
-| manual exact-head delivery gates | `.sourcecraft/*`, E07 | `pnpm verify:sourcecraft-policy` | starter is `CI NOT RUN (EXPERIMENT)` |
+| commercial exact-head delivery gates | `.github/workflows/ci.yml`, ADR-015 | `pnpm verify:delivery-policy` plus actual GitHub gate | configuration PASS requires separate provider evidence on the current SHA |
 | immutable web/worker/migrator template | Docker/Compose/release scripts, E08 | `pnpm verify:release-template`, derived image inspection | no starter registry, server or published artifact |
 | UI, PWA, private-cache and safe-error boundary | routes, service worker and observability, E09 | unit/security/build/E2E in `pnpm verify:release` | browser/live proof repeats for the derived product |
 | clean-room product derivation | disposable copy, E10 | `pnpm derive:smoke` | verification copy is deleted and never published |
@@ -42,8 +42,9 @@ actually in scope.
 
 - The starter intentionally has no production domain, server, registry,
   Secret Master project, database, backup or release authority.
-- SourceCraft paid CI is not run for this `EXPERIMENT` repository. A derived
-  `COMMERCIAL | CRITICAL` product activates exactly one manual exact-head gate.
+- This private `template` has profile `COMMERCIAL`. Local proof and structural
+  conformance do not attest GitHub success; each candidate needs actual
+  `commercial-gate / verify` success. SourceCraft may mirror only.
 - The last E08 local image inspection recorded 11 high/critical Debian base
   findings per image with no fixed version. This is dated residual evidence,
   not permission to release; the derived product rebuilds and rescans.
@@ -56,8 +57,8 @@ actually in scope.
    repository into the product.
 2. Complete `starter.identity.json`, legal data, product domain and optional
    module decisions, then run `pnpm derive:verify` and `pnpm derive:smoke`.
-3. Choose `COMMERCIAL` or `CRITICAL`; configure protected `main` and one manual
-   exact-head SourceCraft gate.
+3. Choose `COMMERCIAL` or `CRITICAL`; configure protected `main` and an
+   exact-head GitHub gate appropriate to the product risks.
 4. Create product-owned Secret Master, PostgreSQL 18 database/runtime roles,
    migration ownership, connection budget, backup and restore proof.
 5. Add product entities and integrations only behind the existing command,
@@ -75,6 +76,7 @@ After the E11 PR is owner-reviewed and merged, use a clean canonical `main`:
 2. run `pnpm verify:release` with the guarded native PostgreSQL 18 test target;
 3. run `pnpm derive:smoke`;
 4. confirm `pnpm verify:conformance` prints the same final `main` SHA;
-5. record `LOCAL PASS / CI NOT RUN (EXPERIMENT)` and close the E11 owner gate.
+5. verify actual required GitHub checks on that exact SHA; record provider
+   evidence in the tracker/PR and close the owner gate only after all proof.
 
 No step in this handover authorizes production.

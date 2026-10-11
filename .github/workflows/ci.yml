@@ -1,0 +1,35 @@
+{
+  "name": "Starter commercial verification",
+  "on": {
+    "pull_request": {
+      "branches": [
+        "main"
+      ]
+    },
+    "push": {
+      "branches": [
+        "main"
+      ]
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "starter-verify-${{ github.event.pull_request.number || github.ref }}",
+    "cancel-in-progress": true
+  },
+  "jobs": {
+    "commercial-gate": {
+      "uses": "neyro-level/AMS_DELIVERY_CORE/.github/workflows/verify.yml@a39227c11a017bf126d3ba416f8dd5da7ff24449",
+      "with": {
+        "expected_sha": "${{ github.event.pull_request.head.sha || github.sha }}",
+        "node_version": "24.20.0",
+        "pnpm_version": "11.5.1",
+        "container_image": "node@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2",
+        "environment_json": "{\"NEXT_TELEMETRY_DISABLED\":\"1\",\"APP_ENV\":\"test\",\"CI\":\"1\"}",
+        "command": "bash scripts/ci/verify-github-contract.sh"
+      }
+    }
+  }
+}

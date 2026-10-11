@@ -2,7 +2,7 @@
 
 Нейтральный starter для будущих CRM, аналитических кабинетов и внутренних веб-приложений АМС.
 
-Сам repository является copy-source шаблоном с `DELIVERY_PROFILE = EXPERIMENT`: он не имеет production и не расходует SourceCraft CI-минуты на push или Pull Request. Production-контур создаётся только в отдельном производном продукте после hardening.
+Роль репозитория — `template`, профиль проверки — `COMMERCIAL`. Это приватный copy-source шаблон, из которого создаются самостоятельные продукты. Основной Git-контур — GitHub; SourceCraft допустим как зеркало. У шаблона нет production-контура. Приёмка изменений требует review и успешного GitHub gate на точном SHA; merge остаётся по отдельной команде владельца (`PR_ONLY`). Контракт — [`docs/03_ARCHITECTURE.md`](docs/03_ARCHITECTURE.md) и [ADR-015](docs/adr/ADR-015-commercial-template-github-delivery.md).
 
 Внутри уже есть публичная главная страница, legal pages, login modal, приватный shell, Platform Admin, пользователи, организации, роли, проекты, audit trail, idempotency, outbox, worker, Docker/release templates и безопасный PWA-слой.
 
@@ -48,3 +48,9 @@ pnpm verify:quick
 Карта документов: [`docs/README.md`](docs/README.md).
 
 Главная идея упаковки: не делать из starter “пример продукта”. Каждый новый продукт берёт эту базу, затем отдельным stream добавляет свою доменную модель, данные, интеграции, тексты, legal и production-профиль.
+
+В копию входят постоянные нейтральные инструкции и код. Локальный Backlog,
+временные планы и журналы исполнения не являются документацией продукта.
+Клиентские цены, реквизиты, SEO-семантика и production-топология определяются
+в производном репозитории; демонстрационные legal pages требуют проверки
+реального оператора до публикации.

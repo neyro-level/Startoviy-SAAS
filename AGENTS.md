@@ -12,7 +12,7 @@ Read the narrowest applicable source before changing code or documentation.
 2. `01_PRD.md`, `02_PRODUCT_STRUCTURE.md`, `03_ARCHITECTURE.md` — only the
    scope-relevant sections;
 3. one applicable ADR or detailed extension;
-4. `04_BACKLOG.md` and the claimed Task Manager task;
+4. `04_BACKLOG.md` and the claimed local Backlog task;
 5. `package.json`, lockfile, `.node-version`, Prisma schema/migrations and
    runtime config — actual technical state.
 
@@ -30,7 +30,9 @@ Read the narrowest applicable source before changing code or documentation.
 
 ## Delivery
 
-The current repository is `EXPERIMENT`. Its hardening program is `PR_ONLY`:
+The current repository is a private `template` with profile `COMMERCIAL`
+and GitHub primary; ADR-015 owns the accepted delivery decision.
+Its hardening program is `PR_ONLY`:
 commit and push checkpoints are allowed, while merge and production require a
 separate owner command. A derived product must establish its own delivery
 profile and production contract.

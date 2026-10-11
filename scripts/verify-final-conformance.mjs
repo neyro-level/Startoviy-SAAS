@@ -11,8 +11,7 @@ const requiredFiles = [
   "docs/DERIVATION.md",
   "docs/HANDOVER.md",
   "starter.identity.json",
-  ".sourcecraft/branches.yaml",
-  ".sourcecraft/ci.yaml",
+  ".github/workflows/ci.yml",
   "Dockerfile",
   "docker-compose.production.yml",
   "ops/release/rollback.sh",
@@ -26,7 +25,7 @@ const requiredScripts = [
   "security:semgrep",
   "security:dependencies",
   "security:secrets",
-  "verify:sourcecraft-policy",
+  "verify:delivery-policy",
   "verify:release-template",
   "derive:smoke",
   "verify:conformance",
@@ -75,20 +74,19 @@ export function verifyFinalConformance({ root = process.cwd(), requireClean = tr
     "## Final-main closure",
     "No step in this handover authorizes production.",
   ]);
-  requireText(root, "docs/05_RELEASE_CHECKLIST.md", ["manual exact-head SourceCraft merge gate", "Build one immutable artifact set"]);
+  requireText(root, "docs/05_RELEASE_CHECKLIST.md", ["exact-head GitHub merge gate", "Build one immutable artifact set"]);
   requireText(root, "docs/DERIVATION.md", ["outboxPlusQueue", "pnpm derive:smoke"]);
-  requireText(root, ".sourcecraft/ci.yaml", ["merge-standard:", "merge-risky:", "EXPECTED_COMMIT_SHA"]);
-  requireText(root, ".sourcecraft/branches.yaml", ["prevent_force_push", "prevent_non_pr_changes", "prevent_deletion"]);
+  requireText(root, ".github/workflows/ci.yml", ["commercial-gate", "github.event.pull_request.head.sha || github.sha"]);
 
   const identity = JSON.parse(read(root, "starter.identity.json"));
   if (!new Set(["starter", "derived"]).has(identity.mode)) throw new Error("Unknown identity mode.");
   const architecture = read(root, "docs/03_ARCHITECTURE.md");
-  const deliveryProfile = identity.mode === "starter" ? "EXPERIMENT" : identity.derivation?.deliveryProfile;
-  if (identity.mode === "starter" && !architecture.includes("DELIVERY_PROFILE = EXPERIMENT")) {
-    throw new Error("Starter architecture must retain DELIVERY_PROFILE = EXPERIMENT.");
+  const deliveryProfile = identity.mode === "starter" ? "COMMERCIAL" : identity.derivation?.deliveryProfile;
+  if (identity.mode === "starter" && !architecture.includes("DELIVERY_PROFILE = COMMERCIAL")) {
+    throw new Error("Starter architecture must retain the owner-approved COMMERCIAL profile.");
   }
   if (identity.mode === "starter") {
-    requireText(root, "docs/HANDOVER.md", ["CI NOT RUN (EXPERIMENT)"]);
+    requireText(root, "docs/HANDOVER.md", ["commercial-gate / verify"]);
     requireText(root, "docs/05_RELEASE_CHECKLIST.md", ["this starter itself is not a release target"]);
   }
   if (identity.mode === "derived" && !new Set(["COMMERCIAL", "CRITICAL"]).has(deliveryProfile)) {
@@ -110,14 +108,16 @@ export function verifyFinalConformance({ root = process.cwd(), requireClean = tr
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    kind: "static-contract",
+    providerGate: "REQUIRES CHECK",
     status: "PASS",
     commitSha,
     treeSha,
     identityMode: identity.mode,
     deliveryProfile,
     guaranteeGroups: ["identity", "postgresql", "authorization", "commands", "async", "ci", "runtime", "ui", "derivation", "handover"],
-    boundedExceptions: ["starter-not-production", "experiment-no-paid-ci", "derived-product-release-proof-required"],
+    boundedExceptions: ["starter-not-production", "provider-evidence-required", "derived-product-release-proof-required"],
   };
 }
 

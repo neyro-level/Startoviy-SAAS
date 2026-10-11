@@ -12,9 +12,11 @@ describe("final conformance contract", () => {
     expect(["starter", "derived"]).toContain(result.identityMode);
     expect(
       result.identityMode === "starter"
-        ? result.deliveryProfile === "EXPERIMENT"
+        ? result.deliveryProfile === "COMMERCIAL"
         : ["COMMERCIAL", "CRITICAL"].includes(result.deliveryProfile),
     ).toBe(true);
+    expect(result.kind).toBe("static-contract");
+    expect(result.providerGate).toBe("REQUIRES CHECK");
     expect(result.guaranteeGroups).toHaveLength(10);
     expect(result.boundedExceptions).toContain("starter-not-production");
   });

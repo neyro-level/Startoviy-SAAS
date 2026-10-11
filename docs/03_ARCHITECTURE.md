@@ -6,7 +6,10 @@
 ## Delivery and project profile
 
 ```text
-DELIVERY_PROFILE = EXPERIMENT
+REPOSITORY_ROLE = template
+DELIVERY_PROFILE = COMMERCIAL
+CANONICAL_PROVIDER = github
+REPOSITORY_VISIBILITY = private
 TENANCY = multi-tenant
 ASYNC = outbox-plus-queue
 DATA = pii
@@ -26,7 +29,7 @@ the hardening program authorizes `PR_ONLY`, not automatic merge or production.
 | Screens, routes and flows | `02_PRODUCT_STRUCTURE.md` |
 | Architecture, profile, security and data policy | this file and ADRs |
 | Current schema and migrations | `prisma/schema.prisma`, `prisma.config.ts`, `prisma/migrations/` |
-| Current work | `04_BACKLOG.md`; execution state is local Task Manager `.beads` |
+| Current work | `04_BACKLOG.md`; execution state is local Backlog, excluded from product copies |
 | Release template | `05_RELEASE_CHECKLIST.md`, Docker/Compose and `ops/` |
 | Final conformance and derived handover | `HANDOVER.md` and ADR-014 |
 | Exact versions | `package.json`, `pnpm-lock.yaml`, `.node-version`, Dockerfile |
@@ -34,6 +37,37 @@ the hardening program authorizes `PR_ONLY`, not automatic merge or production.
 The detailed `AUTH.md`, `DATA_MODEL.md`, `SECURITY.md`, `ENVIRONMENT.md`,
 `RUNBOOK_DEPLOY.md`, `ops/*` and two design-system documents remain justified
 extensions. They refine the area named here and cannot override it.
+
+## GitHub delivery contract
+
+The owner approved `template` and `COMMERCIAL` as independent classifications.
+GitHub is primary, canonical branch is `main`; SourceCraft is an optional
+one-way mirror with no independent CI or release authority. See ADR-015.
+Legacy SourceCraft/EXPERIMENT decisions are superseded for current delivery.
+
+Runtime is Node **24.20.0** and pnpm **11.5.1**, installed from the frozen
+lockfile. The private reusable verifier is pinned to reviewed
+`neyro-level/AMS_DELIVERY_CORE` revision
+`a39227c11a017bf126d3ba416f8dd5da7ff24449`. The consumer binds `expected_sha`
+to the current PR head (or canonical push SHA); it must check out that exact
+commit with read-only permissions and no inherited secrets. Required context
+is `commercial-gate / verify`, including an always-running failure gate.
+
+The project contract preserves quick/config/architecture checks, unit and
+security tests, secret scanning, native PostgreSQL 18 foundation/auth/RLS/
+atomicity/outbox proof, worker build/smoke, browser checks and build. Security
+and dependency scans remain relevant proof for shipped artifacts. Disposable
+test resources use literal loopback and dedicated test identities; production
+credentials, managed databases and production runners are excluded. A static
+SourceCraft policy PASS or local build does not satisfy this provider gate.
+Protection and successful provider runs require actual API readback; workflow
+presence is not evidence. This contract grants no automatic merge or deploy.
+
+Permanent template docs retain architecture, security, UI, derivation and
+technical acceptance instructions. Task queues, master-plans, wave inventories
+and execution snapshots are not inherited product content. Unique long-term
+decisions must be preserved here or in ADRs before legacy history is removed.
+Client facts, offers, SEO and production identity belong to each derived product.
 
 ## Modular monolith
 
@@ -84,7 +118,7 @@ contract, not legal advice.
 | Area | Installed exact version | Decision |
 | --- | --- | --- |
 | Node.js | 24.20.0 | Node 24 line; project exact version is pinned |
-| Next.js | 16.3.3 | App Router 16.x; use `proxy.ts` semantics when needed |
+| Next.js | 16.3.8 | App Router 16.x; use `proxy.ts` semantics when needed |
 | React | 19.2.8 | compatible project line |
 | Prisma / adapter | 7.10.0 / `@prisma/adapter-pg` 7.10.0 | supported PostgreSQL adapter pattern |
 | PostgreSQL target | 18 | target line; local/integration proof is introduced by E00A |
@@ -112,3 +146,10 @@ not an incidental hardening change.
 - ADR-002 fixes the neutral hardening boundary and traceability.
 - Revisit tenancy/RLS after E03 proof; revisit queue deployment after E05;
   revisit TypeScript only through a separately approved version task.
+
+Dependency security pins: `fast-uri` 3.1.8 and `source-map-js` 1.2.2 patch
+their audited URI/source-map defects. `sharp` 0.35.5 pins Next's optional
+0.35 range to obtain patched librsvg; its Node requirement remains compatible.
+Frozen installation, build and image-transform regression must prove this
+bounded patch override before the updated artifact is accepted. Next and
+`eslint-config-next` move together to 16.3.8; other direct runtime pins stay.
