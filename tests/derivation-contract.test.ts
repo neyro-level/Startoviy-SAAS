@@ -80,6 +80,7 @@ function replaceStarterIdentity(value: string) {
 function createCleanRoomDerivedCopy() {
   const root = mkdtempSync(path.join(tmpdir(), "ams-derivation-clean-room-"));
   temporaryRoots.push(root);
+  const alreadyDerived = JSON.parse(readFileSync(path.join(repositoryRoot, "starter.identity.json"), "utf8")).mode === "derived";
   const files = execFileSync("git", ["ls-files", "-z"], {
     cwd: repositoryRoot,
     encoding: "utf8",
@@ -87,16 +88,20 @@ function createCleanRoomDerivedCopy() {
 
   for (const relativePath of files) {
     if (!existsSync(path.join(repositoryRoot, relativePath))) continue;
-    const destination = path.join(root, replaceStarterIdentity(relativePath));
+    const destination = path.join(root, alreadyDerived ? relativePath : replaceStarterIdentity(relativePath));
     mkdirSync(path.dirname(destination), { recursive: true });
     const source = path.join(repositoryRoot, relativePath);
     const contents = readFileSync(source);
     if (contents.includes(0)) {
       copyFileSync(source, destination);
     } else {
-      writeFileSync(destination, replaceStarterIdentity(contents.toString("utf8")));
+      writeFileSync(destination, alreadyDerived ? contents : replaceStarterIdentity(contents.toString("utf8")));
     }
   }
+
+  // A business copy rehearses its own validated identity; it must not be
+  // recast as a starter or inherit this fixture's migration ownership.
+  if (alreadyDerived) return root;
 
   const manifestPath = path.join(root, "starter.identity.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
