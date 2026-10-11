@@ -3,6 +3,9 @@ import { projectIdentity } from "../config/project-identity.ts";
 
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
+import { recordTotpSessionProof } from "./record-totp-proof.ts";
+import { successfulTotpToken } from "./mfa-session-proof.ts";
 import { twoFactor, username } from "better-auth/plugins";
 import {
   hasDatabaseConfiguration,
@@ -34,7 +37,9 @@ export const auth =
               type: "date",
               required: false,
               input: false,
+              returned: false,
             },
+            twoFactorProof: { type: "string", required: false, input: false, returned: false },
           },
         },
         trustedOrigins: [
@@ -63,12 +68,22 @@ export const auth =
         databaseHooks: {
           session: {
             create: {
-              before: async (session, context) => {
-                if (!isTotpVerificationPath(context?.path)) return;
-                return { data: { ...session, twoFactorVerifiedAt: new Date() } };
-              },
+              before: async (session) => ({ data: { ...session, twoFactorVerifiedAt: null, twoFactorProof: null } }),
             },
           },
+        },
+        hooks: {
+          after: createAuthMiddleware(async (context) => {
+            if (!isTotpVerificationPath(context.path)) return;
+            const current = context.context.newSession ?? context.context.session;
+            const returnedToken = successfulTotpToken(context.context.returned);
+            // Enrollment replaces the cookie/session before the SDK returns its
+            // original session token. Both identities come from server context;
+            // proof always targets the new live session, never the old token.
+            if (!current || !returnedToken || (returnedToken !== current.session.token && returnedToken !== context.context.session?.session.token)) return;
+            if (context.context.session && context.context.session.user.id !== current.user.id) return;
+            await recordTotpSessionProof({ sessionId: current.session.id, userId: current.user.id, code: context.body?.code }, authEnvironment.secret);
+          }),
         },
         plugins: [
           twoFactor(),

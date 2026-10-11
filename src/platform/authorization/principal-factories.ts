@@ -1,3 +1,5 @@
+import { hasCurrentMfaProof } from "../auth/mfa-session-proof.ts";
+import { readAuthEnvironment } from "../config/server-environment.ts";
 import { createCorrelationId } from "../http/correlation.ts";
 import {
   createIdentityDatabaseAuthorizationContext,
@@ -14,7 +16,7 @@ import type {
 export interface PrincipalFactoryOptions {
   correlationId?: string;
   selectedOrganizationId?: string | null;
-  platformAdminMfaVerified?: boolean;
+  authenticatedSessionId?: string;
 }
 
 export interface PrincipalState {
@@ -44,6 +46,10 @@ export async function getPrincipalStateByUserId(
         name: true,
         systemRole: true,
         disabledAt: true,
+        twoFactorEnabled: true,
+        twoFactors: { take: 2, select: { id: true, userId: true, secret: true, verified: true } },
+        sessions: { where: { id: options.authenticatedSessionId ?? "", expiresAt: { gt: now } }, take: 1,
+          select: { id: true, userId: true, expiresAt: true, twoFactorVerifiedAt: true, twoFactorProof: true } },
         setupTokens: {
           where: { consumedAt: null, revokedAt: null, expiresAt: { gt: now } },
           select: { id: true },
@@ -57,10 +63,11 @@ export async function getPrincipalStateByUserId(
     }),
   );
   if (!user || user.disabledAt || user.setupTokens.length > 0) return null;
+  if (options.authenticatedSessionId && user.sessions.length !== 1) return null;
 
   let principal: PrincipalContext;
   if (user.systemRole === "PLATFORM_ADMIN") {
-    if (!options.platformAdminMfaVerified) return null;
+    if (!hasCurrentMfaProof({ session: user.sessions[0], enabled: user.twoFactorEnabled, factors: user.twoFactors, key: readAuthEnvironment()?.secret, now })) return null;
     principal = {
       kind: "platform-admin",
       userId: user.id,
