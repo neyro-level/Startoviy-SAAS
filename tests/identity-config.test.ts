@@ -6,6 +6,10 @@ import { createLegalOperator } from "../src/shared/legal/legal-config.ts";
 const fixture = () => JSON.parse(readFileSync("starter.identity.json", "utf8"));
 
 describe("project identity V2", () => {
+  it.each(["https://safe-123.example.com:8443", "https://[2001:db8::1]:8443"])("accepts a canonical bounded DNS/IPv6 origin %s", (origin) => {
+    const input = fixture(); input.identity.publicOrigin = origin;
+    expect(parseProjectIdentity(input).identity.publicOrigin).toBe(origin);
+  });
   it.each(["png", "ico"])("rejects mislabeled SVG assets with a %s extension", (extension) => {
     for (const field of ["iconPath", "faviconPath"] as const) {
       const input = fixture(); input.identity[field] = `/own-icon.${extension}`;
@@ -32,7 +36,7 @@ describe("project identity V2", () => {
     expect(() => parseProjectIdentity(input)).toThrow("identity.productSlug");
   });
 
-  it.each(["not-a-url", "http://example.com", "https://example.com/path", "https://user:credential@example.com", "https://example.com?key=opaque"])("rejects noncanonical or unsafe origin %s", (value) => {
+  it.each(["not-a-url", "http://example.com", "https://example.com/path", "https://user:credential@example.com", "https://example.com?key=opaque", "https://proxy;.example.com", "https://proxy$&.example.com", "https://-bad.example.com", "https://bad-.example.com", `https://${"a".repeat(64)}.example.com`])("rejects noncanonical or unsafe origin %s", (value) => {
     const input = fixture(); input.identity.publicOrigin = value;
     expect(() => parseProjectIdentity(input)).toThrow("identity.publicOrigin");
   });

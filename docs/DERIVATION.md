@@ -16,6 +16,8 @@ HTTPS origin, icons/brand labels, service/worker/database/artifact IDs, legal
 inputs, GitHub origin, profile COMMERCIAL or CRITICAL and explicit module flags.
 Icon/favicon paths must end in `.svg`: the generator renames existing SVG
 assets and the runtime declares SVG MIME; it does not convert PNG/ICO bytes.
+Origin hostnames require valid bounded DNS labels or a canonical IPv6 literal;
+arbitrary URL-host punctuation cannot enter generated proxy configuration.
 `mode` becomes derived; null `sourceRevision` is filled from `--source-sha`,
 an explicitly different revision is rejected. Actual legal provenance stays
 REQUIRES_CHECK; fixtures never establish release authority. Do not put secrets

@@ -65,6 +65,18 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it("materializes dollar metacharacters literally in owned labels and SVG assets", () => {
+    const source = sourceFixture(); const config = input(source.root, "literal-labels");
+    Object.assign(config.identity, { productName: "Dollar $& $$", brandMark: "$&", brandWordmark: "$$" });
+    const options = { sourceRoot: source.root, sourceSha: source.sha, targetRoot: path.join(source.parent, "labels"), input: config };
+    const plan = planProduct(options); applyProduct(options, plan.planHash);
+    const icon = readFileSync(path.join(options.targetRoot, `public${config.identity.iconPath}`), "utf8");
+    const favicon = readFileSync(path.join(options.targetRoot, `public${config.identity.faviconPath}`), "utf8");
+    expect(icon).toContain('aria-label="Dollar $&amp; $$"');
+    expect(icon).toContain('>$&amp;<'); expect(icon).toContain('>$$<');
+    expect(favicon).toContain('>$&amp;<'); expect(favicon).toContain('aria-label="$&amp;"');
+    expect(verifyDerivation({ root: options.targetRoot, manifestPath: path.join(options.targetRoot, "starter.identity.json") })).toEqual([]);
+  });
   it.each(["declared-gitless", "declared-case", "actual-gitless", "actual-case", "actual-ssh"])("rejects a template origin alias (%s) before creating a target", (variant) => {
     const source = sourceFixture(); const config = input(source.root, "origin-proof");
     const declared = JSON.parse(readFileSync(path.join(source.root, "starter.identity.json"), "utf8")).derivation.sourceRepository;

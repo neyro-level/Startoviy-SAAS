@@ -121,7 +121,7 @@ function materializeText(source, file, before, config) {
     [from.productSlug.replaceAll("-", "_"), to.databaseApplicationPrefix.replaceAll("-", "_")],
     [from.productName, name], [from.productSlug, to.productSlug],
   ].filter(([old, next]) => old !== next).sort((a, b) => b[0].length - a[0].length);
-  let result = pairs.reduce((text, [old, next]) => text.replaceAll(old, next), source);
+  let result = pairs.reduce((text, [old, next]) => text.replaceAll(old, () => next), source);
   // Legal placeholder examples are contracts, not generated operator facts.
   // Only the identity manifest supplies actual legal inputs.
   if (file.endsWith(".md")) result = result.replaceAll(["TO", "DO:"].join(""), "placeholder:");
@@ -132,8 +132,10 @@ function materializeText(source, file, before, config) {
     result = stringify(workflow);
   }
   if (file.endsWith(".svg")) {
-    result = result.replaceAll(`>${from.brandMark}<`, `>${xml(to.brandMark)}<`)
-      .replaceAll(`>${from.brandWordmark}<`, `>${xml(to.brandWordmark)}<`);
+    result = result.replaceAll(`>${xml(from.brandMark)}<`, () => `>${xml(to.brandMark)}<`)
+      .replaceAll(`>${xml(from.brandWordmark)}<`, () => `>${xml(to.brandWordmark)}<`)
+      .replaceAll(`aria-label="${xml(from.productName)}"`, () => `aria-label="${xml(to.productName)}"`)
+      .replaceAll(`aria-label="${xml(from.brandMark)}"`, () => `aria-label="${xml(to.brandMark)}"`);
   }
   if (file === "scripts/local-dev.mjs" || file === "scripts/deploy-production.mjs") {
     result = result.replaceAll(`service === "${to.productSlug}"`, `service === "${to.serviceId}"`)

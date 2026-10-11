@@ -6,6 +6,7 @@ const slug = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/).max(40);
 const asset = z.string().regex(/^\/[a-z0-9][a-z0-9/-]*\.svg$/).refine((value) => !value.includes("//"));
 const moduleState = z.enum(["enabled", "disabled", "not_applicable"]);
 const legalPlaceholder = new RegExp(["TO", "DO:", "|UNDECIDED"].join(""), "i");
+const dnsHostname = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/iu;
 const sourcePaths = z.array(z.string().regex(/^[a-zA-Z0-9._/-]+$/).refine((value) =>
   !value.startsWith("/") && !value.split("/").includes("..")
   && !(value.startsWith(".env") && value !== ".env.example")));
@@ -62,6 +63,7 @@ export const projectIdentityV2Schema = z.object({
   try { origin = new URL(value.identity.publicOrigin); }
   catch { issue(["identity", "publicOrigin"]); return; }
   if (origin.protocol !== "https:" || origin.origin !== value.identity.publicOrigin || origin.username || origin.password) issue(["identity", "publicOrigin"]);
+  if (origin.hostname.length > 253 || !(dnsHostname.test(origin.hostname) || /^\[[0-9a-f:]+\]$/iu.test(origin.hostname))) issue(["identity", "publicOrigin"]);
   if (value.derivation.migrationOwner !== value.identity.productSlug) issue(["derivation", "migrationOwner"]);
   if (value.mode === "derived") {
     if (!value.derivation.sourceRevision) issue(["derivation", "sourceRevision"]);
