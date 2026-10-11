@@ -73,6 +73,24 @@ it neither starts a worker nor proves delivery. A disabled module is never
 reported as a healthy active module. Selecting flags does not authorize
 deployment or remove the requirement for own integration/security proof.
 
+### Full residue verification
+
+`pnpm derive:verify` scans indexed files and nonignored local source: every
+regular extension, tracked names and UTF-8 asset metadata, including SQL,
+Dockerfile, env examples, Nginx/systemd, health/legal/PWA and documents.
+Source and donor namespaces are separate fixed deny lists. Private credentials,
+execution records, symlinks, missing indexed source and files beyond the bounded
+scan size fail closed; credential values and credential-bearing filenames are
+never printed. Ignored local credentials are never opened by the verifier.
+
+There is no whole-file/folder exemption, including verifier/tests themselves.
+Only one exact upstream-reference line in ADR-004's explicitly historical
+section is neutral provenance. Extra text, repeated lines, active configuration
+or the same link in another scope are checked normally. This is an immutable
+code contract, not an editable product allowlist. When Nginx configs exist,
+their server names and HTTPS ports must match the validated product origin.
+The verifier reads local sources only and never fetches referenced URLs.
+
 `starter.identity.json` имеет schemaVersion2 и валидируется через
 [identity-contract.ts](../src/platform/config/identity-contract.ts).
 [project-identity.ts](../src/platform/config/project-identity.ts) читает его

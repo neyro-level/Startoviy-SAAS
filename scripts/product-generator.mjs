@@ -56,6 +56,7 @@ function stable(value) {
 
 function ownDelivery(source, file, config) {
   const profile = config.derivation.deliveryProfile;
+  if (file === "docs/adr/ADR-004-neutral-identity-derivation-contract.md") return source.replace(/^`[^`]+` remains a copy-source starter\./m, "This independent product derives its reusable foundation from an accepted template.");
   if (file === "AGENTS.md") {
     return source.replace(/## Delivery\n[\s\S]*?(?=## Checks)/, `## Delivery\n\nThis is an independent derived product with profile \`${profile}\` and GitHub primary.\nThe template's program-specific merge, visibility and release permissions do not transfer.\nThe product owner must establish its own private/public visibility and merge policy,\nconfigure strict exact-head protected PR checks and verify main after an authorized merge.\nNo direct main push, force push, gate bypass or production action is authorized here.\nProduction requires a separate product-owned contract and explicit permission.\n\n`);
   }

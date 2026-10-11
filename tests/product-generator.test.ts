@@ -12,7 +12,7 @@ import { parse } from "yaml";
 const temporary: string[] = [];
 const repository = process.cwd();
 const git = (root: string, ...args: string[]) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-const overlays = ["scripts/product-generator.mjs", "scripts/create-product.mjs", "scripts/ci/verify-github-policy.mjs", "scripts/verify-final-conformance.mjs", "scripts/verify-clean-room-derivation.mjs", "tests/github-policy.test.ts"];
+const overlays = ["scripts/product-generator.mjs", "scripts/create-product.mjs", "scripts/ci/verify-github-policy.mjs", "scripts/verify-final-conformance.mjs", "scripts/verify-clean-room-derivation.mjs", "scripts/verify-derivation.mjs", "tests/github-policy.test.ts", "tests/derivation-contract.test.ts", "docs/adr/ADR-004-neutral-identity-derivation-contract.md"];
 
 function sourceFixture() {
   const parent = mkdtempSync(path.join(tmpdir(), "ams-generator-contract-")); temporary.push(parent);
