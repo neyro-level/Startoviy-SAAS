@@ -59,6 +59,8 @@ describe("project identity V2", () => {
 
   it("requires real inputs, own migration scope and an exact source revision for derived mode", () => {
     const input = fixture(); input.mode = "derived";
+    input.derivation.sourceRevision = null;
+    input.identity.legalOperatorName = ["TO", "DO:", " unresolved"].join("");
     expect(() => parseProjectIdentity(input)).toThrow("Invalid project identity");
     input.derivation.migrationOwner = "different-product";
     expect(() => parseProjectIdentity(input)).toThrow("derivation.migrationOwner");
