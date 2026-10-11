@@ -13,7 +13,7 @@ import { MobileDrawer } from "../src/components/shell/MobileDrawer.tsx";
 describe("mobile identity", () => {
   it("renders the selected product labels in the navigation drawer", () => {
     const identity = { ...publicProjectIdentity, brandMark: "CUSTOM & MARK", brandWordmark: "CUSTOM WORDMARK" };
-    const html = renderToStaticMarkup(createElement(ProjectIdentityProvider, { identity, children: createElement(MobileDrawer, { sections: [], currentPath: "/dashboard/" }) }));
+    const html = renderToStaticMarkup(<ProjectIdentityProvider identity={identity}><MobileDrawer sections={[]} currentPath="/dashboard/" /></ProjectIdentityProvider>);
     expect(html).toContain("CUSTOM &amp; MARK");
     expect(html).toContain("CUSTOM WORDMARK");
     expect(html).toContain("Открыть навигацию");
