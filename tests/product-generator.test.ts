@@ -46,10 +46,10 @@ function sourceFixture() {
 
 function input(root: string, slug: string, profile = "COMMERCIAL") {
   const manifest = JSON.parse(readFileSync(path.join(root, "starter.identity.json"), "utf8"));
-  if (slug === manifest.identity.productSlug) slug = `${slug}-check`;
+  if (slug.includes(manifest.identity.productSlug)) slug = "quartz-console";
   manifest.mode = "derived";
   Object.assign(manifest.identity, {
-    productName: slug === "atlas-portal" ? "Atlas Portal" : "Meridian Tools", shortName: "Independent App",
+    productName: `Generated ${slug}`, shortName: "Independent App",
     productSlug: slug, publicOrigin: `https://${slug}.example.com`, serviceId: slug, workerId: `${slug}-worker`,
     databaseApplicationPrefix: slug, artifactPrefix: slug, repositorySlug: slug,
     iconPath: `/${slug}-icon.svg`, faviconPath: `/${slug}-favicon.svg`, brandMark: "AP", brandWordmark: "PRODUCT",

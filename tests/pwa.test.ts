@@ -1,12 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import manifest from "../src/app/manifest.ts";
+import { publicProjectIdentity } from "../src/platform/config/project-identity.ts";
 
 describe("PWA baseline", () => {
   it("is installable with neutral app name", () => {
     expect(manifest()).toMatchObject({
-      name: "АМС Старт",
-      short_name: "АМС Старт",
+      name: publicProjectIdentity.productName,
+      short_name: publicProjectIdentity.shortName,
       display: "standalone",
     });
   });
