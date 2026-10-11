@@ -76,12 +76,12 @@ export function verifyFinalConformance({ root = process.cwd(), requireClean = tr
   ]);
   requireText(root, "docs/05_RELEASE_CHECKLIST.md", ["exact-head GitHub merge gate", "Build one immutable artifact set"]);
   requireText(root, "docs/DERIVATION.md", ["outboxPlusQueue", "pnpm derive:smoke"]);
-  requireText(root, ".github/workflows/ci.yml", ["commercial-gate", "github.event.pull_request.head.sha || github.sha"]);
-
   const identity = JSON.parse(read(root, "starter.identity.json"));
   if (!new Set(["starter", "derived"]).has(identity.mode)) throw new Error("Unknown identity mode.");
   const architecture = read(root, "docs/03_ARCHITECTURE.md");
   const deliveryProfile = identity.mode === "starter" ? "COMMERCIAL" : identity.derivation?.deliveryProfile;
+  if (!["COMMERCIAL", "CRITICAL"].includes(deliveryProfile)) throw new Error("Unsupported delivery profile.");
+  requireText(root, ".github/workflows/ci.yml", [`${deliveryProfile.toLowerCase()}-gate`, "github.event.pull_request.head.sha || github.sha"]);
   if (identity.mode === "starter" && !architecture.includes("DELIVERY_PROFILE = COMMERCIAL")) {
     throw new Error("Starter architecture must retain the owner-approved COMMERCIAL profile.");
   }

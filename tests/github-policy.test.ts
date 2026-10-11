@@ -3,16 +3,28 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { validateGithubPolicy } from "../scripts/ci/verify-github-policy.mjs";
 
+const profile = JSON.parse(readFileSync("starter.identity.json", "utf8")).derivation.deliveryProfile;
+const gate = `${profile.toLowerCase()}-gate`;
 const runtime = {
+  profile,
   nodeVersion: "24.20.0", packageManager: "pnpm@11.5.1",
   vendorWorkflow: readFileSync(".github/workflows/ams-verify.yml", "utf8"),
   vendorLock: JSON.parse(readFileSync(".github/workflows/ams-verify.yml.lock.json", "utf8")),
 };
 const current = () => parse(readFileSync(".github/workflows/ci.yml", "utf8"));
 
-describe("GitHub commercial consumer", () => {
+describe("GitHub delivery consumer", () => {
   it("accepts the actual frozen-runtime exact-head consumer", () => {
     expect(() => validateGithubPolicy(JSON.stringify(current()), runtime)).not.toThrow();
+  });
+
+  it("binds the declared profile to its exact required context without lowering checks", () => {
+    const candidate = current();
+    candidate.name = "Starter critical verification";
+    candidate.jobs = { "critical-gate": candidate.jobs[gate] };
+    expect(() => validateGithubPolicy(JSON.stringify(candidate), { ...runtime, profile: "CRITICAL" })).not.toThrow();
+    expect(() => validateGithubPolicy(JSON.stringify(candidate), { ...runtime, profile: "COMMERCIAL" })).toThrow();
+    expect(() => validateGithubPolicy(JSON.stringify(candidate), { ...runtime, profile: "EXPERIMENT" })).toThrow();
   });
 
   it("rejects duplicate permission keys instead of silently accepting an override", () => {
@@ -24,9 +36,9 @@ describe("GitHub commercial consumer", () => {
     for (const mutate of [
       (w: ReturnType<typeof current>) => { w.on.pull_request_target = {}; },
       (w: ReturnType<typeof current>) => { w.permissions.contents = "write"; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].secrets = "inherit"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].secrets = "inherit"; },
       (w: ReturnType<typeof current>) => { w.jobs.deploy = { "runs-on": "self-hosted" }; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].if = "false"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].if = "false"; },
     ]) {
       const candidate = current();
       mutate(candidate);
@@ -36,11 +48,11 @@ describe("GitHub commercial consumer", () => {
 
   it("rejects mutable references, merge-ref proof, altered bootstrap and runtime drift", () => {
     for (const mutate of [
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].uses = "neyro-level/AMS_DELIVERY_CORE/.github/workflows/verify.yml@main"; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].with.expected_sha = "${{ github.sha }}"; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].with.command = "true"; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].with.node_version = "24"; },
-      (w: ReturnType<typeof current>) => { w.jobs["commercial-gate"].with.environment_json = '{"DATABASE_HOST":"production"}'; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].uses = "neyro-level/AMS_DELIVERY_CORE/.github/workflows/verify.yml@main"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].with.expected_sha = "${{ github.sha }}"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].with.command = "true"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].with.node_version = "24"; },
+      (w: ReturnType<typeof current>) => { w.jobs[gate].with.environment_json = '{"DATABASE_HOST":"production"}'; },
     ]) {
       const candidate = current();
       mutate(candidate);

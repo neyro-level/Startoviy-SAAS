@@ -68,7 +68,8 @@
     "worker:outbox": "tsx src/worker/main.ts outbox-worker",
     "worker:outbox:drain": "tsx src/worker/main.ts outbox-drain",
     "worker:outbox:retention": "tsx src/worker/main.ts outbox-retention",
-    "verify:delivery-policy": "node scripts/ci/verify-github-policy.mjs"
+    "verify:delivery-policy": "node scripts/ci/verify-github-policy.mjs",
+    "derive:create": "node scripts/create-product.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

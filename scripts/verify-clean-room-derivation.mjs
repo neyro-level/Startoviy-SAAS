@@ -131,6 +131,7 @@ function assertRepositoryContract(root) {
     packageManager: JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).packageManager,
     vendorWorkflow: readFileSync(path.join(root, ".github/workflows/ams-verify.yml"), "utf8"),
     vendorLock: JSON.parse(readFileSync(path.join(root, ".github/workflows/ams-verify.yml.lock.json"), "utf8")),
+    profile: JSON.parse(readFileSync(path.join(root, "starter.identity.json"), "utf8")).derivation.deliveryProfile,
   });
   const architecture = readFileSync(path.join(root, "docs/03_ARCHITECTURE.md"), "utf8");
   if (!architecture.includes("DELIVERY_PROFILE = COMMERCIAL")) {

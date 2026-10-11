@@ -3,10 +3,53 @@
 **Status:** Active extension. PRD owns product/facts; Architecture owns optional
 boundaries; this file owns the actual derivation interface and verification.
 
-`VERIFIED`: baseline uses copy-source plus identity manifest and disposable
-smoke. `TARGET`: approved deterministic generator is not yet implemented;
-existing smoke must not be described as a finished scaffolding CLI. No template
-distribution service or production product is created by verification.
+`VERIFIED`: local generator, typed identity and copy-source disposable smoke.
+`TARGET`: representative optional-disabled profiles and independent pilot proof
+remain separate requirements; the existing smoke is not yet the whole generator
+proof matrix. No distribution service or production product is created.
+
+## Локальный generator: dry-run → apply
+
+Use `pnpm derive:create` from a clean template checkout on the selected full
+commit SHA. The input JSON follows ProjectIdentityV2: own product name/slug,
+HTTPS origin, icons/brand labels, service/worker/database/artifact IDs, legal
+inputs, GitHub origin, profile COMMERCIAL or CRITICAL and explicit module flags.
+`mode` becomes derived; null `sourceRevision` is filled from `--source-sha`,
+an explicitly different revision is rejected. Actual legal provenance stays
+REQUIRES_CHECK; fixtures never establish release authority. Do not put secrets
+or environment values in input JSON or flags.
+
+```bash
+pnpm derive:create --source-sha "$TEMPLATE_SHA" --input /path/product.json --target /path/new-product --dry-run
+pnpm derive:create --source-sha "$TEMPLATE_SHA" --input /path/product.json --target /path/new-product --apply --plan-hash "$PLAN_HASH"
+```
+
+Dry-run writes nothing and returns a deterministic `planHash`, exact source
+SHA/tree, every source/destination path and checksum, omitted mirror paths and
+byte-exact vendor exceptions. It prints no full legal inputs or source contents;
+no snapshot/master-plan is saved. Review that output, then pass its matching
+hash to apply. Changed inputs/target/tree invalidate the hash. The parent
+directory must exist, the destination must be absent and outside the source;
+existing work is never overwritten, including an empty directory.
+
+The generator reads immutable Git blobs, rejects dirty tracked source,
+symlinks/submodules, credential/local/execution paths and detected credential
+patterns before writing. Required canon/runtime files and original/generated
+GitHub profile/provenance are validated. It initializes a new local main with
+one commit and own origin; it never pushes, creates a remote repository,
+database, bucket or Secret Master project. Git templates/hooks and inherited
+commit signing are disabled for this initial synthetic operation. Source
+checkout/head/remote/history stay intact. Only a newly created owned target is
+removed on failure; source and pre-existing destinations are never cleaned.
+
+Materialization rewrites selected product/runtime/SQL/PWA/operation/asset
+names, escapes labels in code/XML, keeps vendor bytes unchanged and excludes
+SourceCraft configuration. Pure placeholder policy prose stays policy rather
+than becoming a fake operator. Generated AGENTS/architecture/acceptance set
+own product authority: Starter's temporary-public and autonomous-merge program
+permissions do not transfer. Register/configure actual GitHub protected main
+and check API evidence separately before a product merge. Generation alone
+does not prove optional-disabled paths or ready-to-release status.
 
 ## ProjectIdentityV2: единственный источник identity
 
