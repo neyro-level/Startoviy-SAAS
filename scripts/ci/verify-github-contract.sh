@@ -35,12 +35,12 @@ runuser -u postgres -- /usr/lib/postgresql/18/bin/initdb -D "$proof_pg_dir" --au
 runuser -u postgres -- /usr/lib/postgresql/18/bin/pg_ctl -D "$proof_pg_dir" \
   -l "$proof_pg_dir/server.log" -o '-h 127.0.0.1 -p 55438' -w start
 
-export LOCAL_POSTGRES_USER=ams_starter_dev TEST_DATABASE_HOST=127.0.0.1 TEST_DATABASE_PORT=55438
-export TEST_DATABASE_USER=ams_starter_test TEST_DATABASE_NAME=ams_starter_test
+export LOCAL_POSTGRES_USER=ams_start_dev TEST_DATABASE_HOST=127.0.0.1 TEST_DATABASE_PORT=55438
+export TEST_DATABASE_USER=ams_start_test TEST_DATABASE_NAME=ams_start_test
 export TEST_DATABASE_PASSWORD=isolated-ci-test-only
 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 55438 -U postgres -d postgres \
-  -c 'CREATE ROLE ams_starter_test LOGIN CREATEDB'
-createdb -h 127.0.0.1 -p 55438 -U postgres -O ams_starter_test ams_starter_test
+  -c 'CREATE ROLE ams_start_test LOGIN CREATEDB'
+createdb -h 127.0.0.1 -p 55438 -U postgres -O ams_start_test ams_start_test
 node scripts/verify-test-database-env.mjs
 
 python3 -m venv /tmp/ams-starter-ci-semgrep
@@ -66,11 +66,11 @@ mkdir -p .local/ci
 umask 077
 cat > .local/ci/e2e.env <<'ENV'
 APP_ENV=test
-LOCAL_POSTGRES_USER=ams_starter_dev
+LOCAL_POSTGRES_USER=ams_start_dev
 TEST_DATABASE_HOST=127.0.0.1
 TEST_DATABASE_PORT=55438
-TEST_DATABASE_USER=ams_starter_test
-TEST_DATABASE_NAME=ams_starter_test
+TEST_DATABASE_USER=ams_start_test
+TEST_DATABASE_NAME=ams_start_test
 TEST_DATABASE_PASSWORD=isolated-ci-test-only
 BETTER_AUTH_SECRET=e2e-only-secret-at-least-thirty-two-characters
 BETTER_AUTH_URL=http://127.0.0.1:3100

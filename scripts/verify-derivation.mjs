@@ -12,6 +12,7 @@ export const sourceMarkers = [
   ["ams", "favicon"].join("-"), ["АМС", "Старт"].join(" "),
   ["TO", "DO:"].join(""), ["ams", "microsaas", "starter"].join("-"),
   ["Startoviy", "SAAS"].join("-"),
+  ["ams", "starter"].join("_"),
 ];
 export const donorMarkers = [
   ["ams", "data", "hub"].join("-"), ["ams", "data", "hub"].join("_"),

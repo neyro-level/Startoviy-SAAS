@@ -42,6 +42,12 @@ beforeEach(() => {
 });
 
 describe("optional capability boundaries", () => {
+  it.each(["enabled", "disabled", "not_applicable"] as const)("describes background capabilities only when enabled (%s)", async (state) => {
+    mocks.modules.outboxPlusQueue = state;
+    const html = renderToStaticMarkup(await DashboardPage());
+    expect(html.includes("Outbox и worker готовы")).toBe(state === "enabled");
+    expect(html).toContain("Вход и права доступа");
+  });
   it.each(["enabled", "disabled", "not_applicable"] as const)("renders the dashboard admin action only with an enabled module (%s)", async (state) => {
     mocks.modules.platformAdmin = state;
     const html = renderToStaticMarkup(await DashboardPage());

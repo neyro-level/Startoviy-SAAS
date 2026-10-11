@@ -1,6 +1,6 @@
 import { PgBoss } from "pg-boss";
 import pg from "pg";
-import { optionalModules } from "../src/platform/config/project-identity.ts";
+import { optionalModules, projectIdentity } from "../src/platform/config/project-identity.ts";
 import { isModuleEnabled } from "../src/platform/config/optional-modules.ts";
 import {
   formatDatabaseTargetSummary,
@@ -83,7 +83,7 @@ const boss = new PgBoss({
   ...databaseOptions,
   schema,
   max: 1,
-  application_name: "ams-start-pgboss-migrate",
+  application_name: `${projectIdentity.identity.databaseApplicationPrefix}-pgboss-migrate`,
   migrate: true,
   createSchema: true,
   supervise: false,

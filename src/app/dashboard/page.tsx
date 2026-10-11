@@ -51,7 +51,9 @@ export default async function DashboardPage() {
         <ul className="grid gap-3 text-sm text-app-secondary md:grid-cols-2">
           <li className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">Вход и права доступа настроены для каждой организации.</li>
           <li className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">Проекты можно использовать как стартовую сущность для будущего продукта.</li>
-          <li className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">Outbox и worker готовы для фоновых задач без внешних API по умолчанию.</li>
+          {isModuleEnabled(optionalModules, "outboxPlusQueue") ? (
+            <li className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">Outbox и worker готовы для фоновых задач без внешних API по умолчанию.</li>
+          ) : null}
           <li className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">В кабинете отображаются только безопасные данные без паролей и ключей доступа.</li>
         </ul>
       </SectionCard>

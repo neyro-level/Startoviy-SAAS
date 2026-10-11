@@ -202,6 +202,15 @@ describe("nonpublishing product generator", () => {
     expect(read("scripts/local-dev.mjs")).toContain('service === "atlas-web"');
     expect(read("scripts/build-release.mjs")).toContain("atlas-artifact-${commitSha}.tar.gz");
     expect(read("scripts/sql/prepare-rls-test-identities.sql")).toContain("atlas_db_web");
+    expect(read("scripts/pgboss-migrate.mjs")).toContain("projectIdentity.identity.databaseApplicationPrefix");
+    const ci = read("scripts/ci/verify-github-contract.sh");
+    expect(ci).toContain("CREATE ROLE atlas_db_test LOGIN CREATEDB");
+    expect(ci.match(/TEST_DATABASE_USER=atlas_db_test/gu)).toHaveLength(2);
+    expect(ci.match(/TEST_DATABASE_NAME=atlas_db_test/gu)).toHaveLength(2);
+    expect(ci.match(/LOCAL_POSTGRES_USER=atlas_db_dev/gu)).toHaveLength(2);
+    expect(ci).toContain("-O atlas_db_test atlas_db_test");
+    expect(ci).not.toContain(["ams", "starter"].join("_"));
+    expect(ci).not.toContain("atlas_portal_test");
     expect(read(`public${config.identity.iconPath}`)).toContain("Atlas &quot;Team&quot; &amp; Partners");
     expect(read(".github/workflows/ams-verify.yml")).toBe(readFileSync(path.join(source.root, ".github/workflows/ams-verify.yml"), "utf8"));
   });
