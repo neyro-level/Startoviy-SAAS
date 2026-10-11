@@ -68,7 +68,10 @@ export const projectIdentityV2Schema = z.object({
   if (value.mode === "derived") {
     if (!value.derivation.sourceRevision) issue(["derivation", "sourceRevision"]);
     const documentationDomain = ["example.com", "example.net", "example.org"].some((domain) => origin.hostname === domain || origin.hostname.endsWith(`.${domain}`));
-    if (documentationDomain || origin.hostname === "localhost" || origin.hostname.endsWith(".example") || origin.hostname === "127.0.0.1" || origin.hostname === "[::1]") issue(["identity", "publicOrigin"]);
+    const loopback = origin.hostname === "localhost" || origin.hostname.endsWith(".localhost")
+      || /^127\./u.test(origin.hostname) || origin.hostname === "[::1]"
+      || /^\[::ffff:7f[0-9a-f]{2}:[0-9a-f]+\]$/iu.test(origin.hostname);
+    if (documentationDomain || loopback || origin.hostname.endsWith(".example")) issue(["identity", "publicOrigin"]);
     for (const field of ["legalOperatorName", "legalOperatorEmail", "legalOperatorAddress", "legalOperatorInn", "legalOperatorOgrn", "legalOperatorPhone"] as const) {
       if (legalPlaceholder.test(value.identity[field])) issue(["identity", field]);
     }

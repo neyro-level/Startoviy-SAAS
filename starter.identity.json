@@ -74,7 +74,7 @@
       "src/shared/legal",
       "src/components/marketing/legal",
       "public",
-      "src/app/manifest.ts"
+      "src/platform/pwa/manifest.ts"
     ]
   },
   "legalReferences": {

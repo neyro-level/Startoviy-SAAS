@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseProjectIdentity, parseProjectIdentityJson, toPublicProjectIdentity } from "../src/platform/config/identity-contract.ts";
 import { createLegalOperator } from "../src/shared/legal/legal-config.ts";
@@ -6,6 +6,18 @@ import { createLegalOperator } from "../src/shared/legal/legal-config.ts";
 const fixture = () => JSON.parse(readFileSync("starter.identity.json", "utf8"));
 
 describe("project identity V2", () => {
+  it("maps every declared source surface to an existing file or directory", () => {
+    for (const paths of Object.values(fixture().surfaceInventory) as string[][]) {
+      for (const file of paths) expect(existsSync(file), file).toBe(true);
+    }
+  });
+  it.each(["localhost", "tenant.localhost", "nested.tenant.localhost", "127.0.0.1", "127.0.0.2", "127.255.255.255", "[::1]", "[::ffff:7f00:2]"])("rejects local-only derived origin %s", (hostname) => {
+    const input = fixture(); input.mode = "derived";
+    input.derivation.sourceRevision = "1".repeat(40);
+    input.legalReferences.status = "REQUIRES_CHECK";
+    input.identity.publicOrigin = `https://${hostname}`;
+    expect(() => parseProjectIdentity(input)).toThrow("identity.publicOrigin");
+  });
   it.each(["example.com", "example.net", "example.org", "tenant.example.com", "tenant.example.net", "tenant.example.org"])("rejects documentation-only derived origin %s", (hostname) => {
     const input = fixture();
     input.mode = "derived";

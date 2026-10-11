@@ -59,7 +59,8 @@ function withoutHistoricalReference(file, content) {
   }).join("\n");
 }
 
-export function verifyDerivation({ root, manifestPath }) {
+export function verifyDerivation({ root, manifestPath, additionalSourceMarkers = [] }) {
+  const selectedSourceMarkers = [...sourceMarkers, ...additionalSourceMarkers];
   let manifest;
   const manifestRelative = path.relative(path.resolve(root), path.resolve(manifestPath));
   if (!manifestRelative || manifestRelative.startsWith(`..${path.sep}`) || path.isAbsolute(manifestRelative)) return ["Identity manifest must be inside the product root"];
@@ -74,6 +75,14 @@ export function verifyDerivation({ root, manifestPath }) {
   catch (error) { return [`identity manifest validation failed in ${safePath(manifestRelative)}: ${error.message}`]; }
   const violations = [];
   if (manifest.mode !== "derived") violations.push("identity manifest mode must be derived");
+  for (const files of Object.values(manifest.surfaceInventory ?? {})) {
+    for (const file of files) {
+      try {
+        const stat = lstatSync(path.join(root, file));
+        if (symlinkParent(root, file) || stat.isSymbolicLink() || !(stat.isFile() || stat.isDirectory())) violations.push(`unsupported identity inventory surface in ${safePath(file)}`);
+      } catch { violations.push(`missing identity inventory surface in ${safePath(file)}`); }
+    }
+  }
   for (const relative of [...new Set(sourceFiles(root))].sort()) {
     const file = relative.replaceAll("\\", "/");
     const label = safePath(file);
@@ -81,7 +90,7 @@ export function verifyDerivation({ root, manifestPath }) {
     if (isExecutionArtifact(file)) { violations.push(`inherited execution artifact in ${label}`); continue; }
     if (credentialPath(file)) { violations.push(`private/local material in ${label}`); continue; }
     if (scanText(file).length) { violations.push(`credential pattern in ${label}`); continue; }
-    if (markersIn(file, sourceMarkers)) violations.push(`unresolved starter token in path ${label}`);
+    if (markersIn(file, selectedSourceMarkers)) violations.push(`unresolved starter token in path ${label}`);
     if (markersIn(file, donorMarkers)) violations.push(`donor identity in path ${label}`);
     const absolute = path.join(root, file);
     let stat;
@@ -99,7 +108,7 @@ export function verifyDerivation({ root, manifestPath }) {
     const raw = readFileSync(absolute).toString("utf8");
     if (scanText(raw).length) violations.push(`credential pattern in ${label}`);
     const content = withoutHistoricalReference(file, raw);
-    if (markersIn(content, sourceMarkers)) violations.push(`unresolved starter token in ${label}`);
+    if (markersIn(content, selectedSourceMarkers)) violations.push(`unresolved starter token in ${label}`);
     if (markersIn(content, donorMarkers)) violations.push(`donor identity in ${label}`);
     if (file.startsWith("ops/nginx/") && file.endsWith(".conf")) {
       const origin = new URL(manifest.identity.publicOrigin);

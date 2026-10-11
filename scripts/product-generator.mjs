@@ -266,7 +266,7 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
     preserved: [...reserved].filter((file) => entries.some((entry) => entry.file === file)),
   };
   const planHash = hash(JSON.stringify(stable({ ...publicPlan, config })));
-  return { publicPlan: { ...publicPlan, planHash }, files, config };
+  return { publicPlan: { ...publicPlan, planHash }, files, config, oldMarkers };
 }
 
 export function planProduct(options) { return prepare(options).publicPlan; }
@@ -288,7 +288,7 @@ export function applyProduct(options, expectedPlanHash) {
     git(root, "-c", `core.hooksPath=${hookDir}`, "add", ".");
     const indexed = new Set(git(root, "ls-files", "-z").toString("utf8").split("\0").filter(Boolean));
     if (prepared.files.some((file) => !indexed.has(file.to))) throw new Error("Copied Git ignore excludes permanent product source");
-    const violations = verifyDerivation({ root, manifestPath: path.join(root, "starter.identity.json") });
+    const violations = verifyDerivation({ root, manifestPath: path.join(root, "starter.identity.json"), additionalSourceMarkers: prepared.oldMarkers });
     if (violations.length) throw new Error(`Generated derivation verification failed: ${violations.join("; ")}`);
     git(root, "-c", `core.hooksPath=${hookDir}`, "-c", "commit.gpgSign=false", "-c", "user.name=Product Generator", "-c", "user.email=generator@localhost", "commit", "--quiet", "-m", "Initialize independent product");
     complete = true;
