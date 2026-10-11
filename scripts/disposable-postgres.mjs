@@ -8,7 +8,10 @@ export const proofPostgresImage = "postgres@sha256:afc7e2d441324c0388fa80c3d24f7
 
 export async function startDisposablePostgres({ directory, env, signal, slug }) {
   if (existsSync("/usr/lib/postgresql/18/bin/initdb")) return startNativeProofPostgres({ env, signal, slug });
-  const run = (args, options = {}) => runProofProcess("docker", args, { env, signal, capture: true, timeoutMs: 30_000, ...options });
+  const run = async (args, options = {}) => {
+    try { return await runProofProcess("docker", args, { env, signal, capture: true, timeoutMs: 30_000, ...options }); }
+    catch { throw new Error(`Owned Docker database operation failed: ${args[0]}`); }
+  };
   const context = (await run(["context", "show"])).stdout.trim();
   const configured = (await run(["context", "inspect", context, "--format", "{{.Endpoints.docker.Host}}"])).stdout.trim();
   const endpoint = env.DOCKER_HOST || configured;
@@ -36,7 +39,9 @@ export async function startDisposablePostgres({ directory, env, signal, slug }) 
     const deadline = Date.now() + 60_000;
     while (true) {
       if (signal?.aborted) throw new Error("Proof cancelled");
-      try { await run(["exec", name, "pg_isready", "-U", "postgres"]); break; } catch {
+      // Official image briefly starts a socket-only initialization server.
+      // Wait for the final TCP server before using its administrator.
+      try { await run(["exec", name, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]); break; } catch {
         if (Date.now() >= deadline) throw new Error("Owned PostgreSQL startup timed out");
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -46,7 +51,7 @@ export async function startDisposablePostgres({ directory, env, signal, slug }) 
     const stem = slug.replaceAll("-", "_");
     if (!/^[a-z][a-z0-9_]{0,39}$/.test(stem)) throw new Error("Unsafe owned test namespace");
     const user = `${stem}_test`; const database = `${stem}_test`;
-    await run(["exec", "--interactive", name, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres"], {
+    await run(["exec", "--interactive", name, "psql", "-X", "-h", "127.0.0.1", "-v", "ON_ERROR_STOP=1", "-U", "postgres"], {
       input: `CREATE ROLE "${user}" LOGIN CREATEDB;\nCREATE DATABASE "${database}" OWNER "${user}";\n`,
     });
     return {

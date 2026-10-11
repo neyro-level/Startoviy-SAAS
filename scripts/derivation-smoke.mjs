@@ -51,7 +51,7 @@ function ownRehearsal(sourceRoot, sha, target, identity) {
   assertNoInheritedExecutionArtifacts(entries.map((entry) => entry.file));
   for (const entry of entries) {
     if (!/^100(?:644|755)$/.test(entry.mode) || entry.type !== "blob") throw new Error("Rehearsal forbids symlinks/submodules");
-    if (entry.file.startsWith("/") || entry.file.split("/").some((part) => part === ".." || /^(?:\.git|\.aws|\.ssh|\.codex|\.agents|node_modules|\.next|\.runtime)$/i.test(part) || (part.startsWith(".env") && part !== ".env.example") || /\.(?:pem|key|p12|pfx)$/i.test(part)) || /[\\\u0000-\u001f]/u.test(entry.file) || scanText(entry.file).length) throw new Error("Rehearsal forbids private/local paths");
+    if (entry.file.startsWith("/") || entry.file.split("/").some((part) => part === ".." || /^(?:\.git|\.aws|\.ssh|\.codex|\.agents|node_modules|\.next|\.runtime|credentials|id_rsa|id_ed25519)$/i.test(part) || (part.startsWith(".env") && part !== ".env.example") || /\.(?:pem|key|p12|pfx)$/i.test(part)) || /[\\\u0000-\u001f<>:"|?*]/u.test(entry.file) || scanText(entry.file).length) throw new Error("Rehearsal forbids private/local paths");
   }
   const blobs = readBlobs(sourceRoot, entries);
   for (const bytes of blobs.values()) if (scanText(bytes.toString("utf8")).length) throw new Error("Rehearsal source contains a credential pattern");
@@ -80,6 +80,8 @@ function proofEnvironment() {
 
 export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs = 2, native = "auto", browser = "auto", signal, evidencePath = null }) {
   if (![1, 2].includes(runs) || ![null, "enabled", "disabled", "not_applicable"].includes(moduleState) || !["auto", "required", "off"].includes(native) || !["auto", "required", "off"].includes(browser)) throw new Error("Invalid smoke options");
+  sourceRoot = realpathSync(sourceRoot);
+  if (realpathSync(textGit(sourceRoot, "rev-parse", "--show-toplevel")) !== sourceRoot) throw new Error("Smoke requires the exact repository root");
   const before = sourceState(sourceRoot);
   if (before.status) throw new Error("Smoke requires a clean exact source commit");
   if (evidencePath) {
@@ -144,8 +146,9 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
         await run("node", ["scripts/verify-optional-profile.mjs"]);
         if (native !== "off") {
           try { database = await startDisposablePostgres({ directory, env: environment, signal, slug: identity.identity.productSlug }); }
-          catch (error) { if (signal?.aborted || native === "required") throw error; record.native = { status: "BLOCKED", reason: "Owned PostgreSQL18 backend unavailable" }; }
+          catch (error) { record.native = { status: signal?.aborted ? "CANCELLED" : native === "required" ? "FAIL" : "BLOCKED", reason: "Owned PostgreSQL18 backend unavailable" }; if (signal?.aborted || native === "required") throw error; }
           if (database) {
+            record.native = { status: "RUNNING", version: database.version };
             await run("node", ["scripts/verify-test-database-env.mjs"], database.environment);
             const suites = isModuleEnabled(identity.derivation.optionalModules, "outboxPlusQueue") ? [] : ["tests/integration/postgresql-foundation.integration.test.ts", "tests/integration/account-setup.integration.test.ts", "tests/integration/tenant-isolation.integration.test.ts", "tests/integration/principal-runtime-adoption.integration.test.ts", "tests/integration/command-atomicity.integration.test.ts"];
             await run("pnpm", ["test:integration", ...suites], database.environment);
@@ -162,11 +165,13 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
             const envFile = path.join(root, ".local", "smoke", "e2e.env"); mkdirSync(path.dirname(envFile), { recursive: true });
             const browserEnv = { ...database.environment, BETTER_AUTH_URL: "http://127.0.0.1:3100", BETTER_AUTH_SECRET: "e2e-only-secret-at-least-thirty-two-characters" };
             writeFileSync(envFile, Object.entries(browserEnv).map(([key, value]) => `${key}=${value}`).join("\n"), { mode: 0o600 });
+            record.browser = { status: "RUNNING" };
             await run("pnpm", ["test:e2e:run"], { ...browserEnv, E2E_ENV_FILE: envFile });
             record.browser = { status: "PASS", scope: "INSTALLED_CHROMIUM_NATIVE_ROUTES" };
           }
         } else record.browser = { status: "NOT_RUN", reason: "Explicit off selection" };
       } finally {
+        for (const check of [record.native, record.browser]) if (check.status === "RUNNING") check.status = signal?.aborted ? "CANCELLED" : "FAIL";
         let databaseClean = true;
         try { if (database) await database.stop(); }
         catch (error) { databaseClean = false; throw error; }
@@ -178,6 +183,8 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
     return evidence;
   } catch (error) { evidence.status = signal?.aborted ? "CANCELLED" : "FAIL"; throw Object.assign(error, { evidence }); }
   finally {
+    evidence.sourceUnchanged = JSON.stringify(sourceState(sourceRoot)) === JSON.stringify(before);
+    if (!evidence.sourceUnchanged) evidence.status = "FAIL";
     evidence.cleanup = evidence.runs.every((record) => record.cleanup === "PASS") ? "PASS" : "FAIL";
     if (evidencePath) writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, { flag: "wx", mode: 0o600 });
   }
