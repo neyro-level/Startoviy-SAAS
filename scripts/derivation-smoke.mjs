@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { applyProduct, planProduct, readBlobs } from "./product-generator.mjs";
@@ -156,9 +155,12 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
           }
         } else record.native = { status: "NOT_RUN", reason: "Explicit off selection" };
         if (browser !== "off") {
-          const require = createRequire(path.join(root, "package.json"));
-          const chromium = require("@playwright/test").chromium;
-          if (!database || !existsSync(chromium.executablePath())) {
+          record.browser = { status: "RUNNING" };
+          // Isolate package resolution from earlier disposable copies. Parent
+          // module/realpath caches can otherwise retain a removed installation.
+          const probe = await runProofProcess("node", ["--input-type=module", "-e", 'import { chromium } from "@playwright/test";import { existsSync } from "node:fs";process.stdout.write(JSON.stringify({available:existsSync(chromium.executablePath())}));'], { cwd: root, env: environment, signal, capture: true, timeoutMs: 30_000 });
+          const available = JSON.parse(probe.stdout).available === true;
+          if (!database || !available) {
             record.browser = { status: "BLOCKED", reason: !database ? "Owned native database unavailable" : "Installed Chromium unavailable" };
             if (browser === "required") throw new Error("Required native browser proof unavailable");
           } else {
@@ -181,7 +183,11 @@ export async function runDerivationSmoke({ sourceRoot, moduleState = null, runs 
     if (JSON.stringify(sourceState(sourceRoot)) !== JSON.stringify(before)) throw new Error("Original source state changed during smoke");
     evidence.status = evidence.runs.some((record) => record.native.status !== "PASS" || record.browser.status !== "PASS") ? "LOCAL_PASS_EXTERNAL_PROOF_INCOMPLETE" : "PASS";
     return evidence;
-  } catch (error) { evidence.status = signal?.aborted ? "CANCELLED" : "FAIL"; throw Object.assign(error, { evidence }); }
+  } catch (error) {
+    evidence.status = signal?.aborted ? "CANCELLED" : "FAIL";
+    evidence.failureCode = ["MODULE_NOT_FOUND", "ERR_MODULE_NOT_FOUND", "ENOENT", "ENOMEM", "EACCES", "EMFILE", "ENOSPC"].includes(error.code) ? error.code : "PROOF_CHECK_FAILED";
+    throw Object.assign(error, { evidence });
+  }
   finally {
     evidence.sourceUnchanged = JSON.stringify(sourceState(sourceRoot)) === JSON.stringify(before);
     if (!evidence.sourceUnchanged) evidence.status = "FAIL";
