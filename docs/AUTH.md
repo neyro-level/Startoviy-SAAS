@@ -24,13 +24,22 @@ remain REQUIRES CHECK; do not infer them from the login rule.
 ## VERIFIED persisted session and authority
 
 `principal-session.ts` disables cookie-cache, then reloads persisted session
-user/expiry/activeOrganizationId/twoFactorVerifiedAt. Missing, mismatched,
+user/expiry/activeOrganizationId. Missing, mismatched,
 expired or revoked session is denied; user state/membership is read afresh.
 `principal-factories.ts` denies disabled user and outstanding live setup token.
-Platform Admin requires persisted session MFA proof, stamped by the TOTP
-verification path; twoFactorEnabled alone grants no authority. Current check
-is timestamp presence, not a separate recent-MFA TTL. Stronger freshness,
-backup-code behavior and full successful browser flow require explicit proof.
+Platform Admin requires enabled two-factor authentication, exactly one current
+verified factor and a persisted proof bound to that factor, user and session.
+The proof is an HMAC over the factor's encrypted secret and server-owned IDs,
+using the auth secret; the timestamp alone grants no authority. Only successful
+`/two-factor/verify-totp` records it, after rechecking the current factor and code.
+New sessions clear both fields. Disable, factor rotation, recovery and session
+revocation invalidate authority; backup-code login grants no TOTP proof.
+Both fields reject client input and are excluded from public session responses.
+The installed Better Auth 1.7.2 enrollment path replaces the session before
+returning its old token; the hook uses server context and stamps only the new
+live session. Already-authenticated verification can stamp the current session.
+There is no separate recent-MFA TTL; session expiry bounds proof lifetime.
+Legacy timestamp-only sessions must verify TOTP again after the additive migration.
 
 | Current role | Principal / boundary |
 | --- | --- |
@@ -80,7 +89,10 @@ production provisioning/recovery follows its reviewed operational contract.
 [ADR-005](adr/ADR-005-identity-platform-admin-hardening.md) owns durable identity
 invariants. Existing `account-setup.integration.test.ts` and
 `principal-runtime-adoption.integration.test.ts` cover setup/recovery/session
-and authority denies; `auth-security-config.test.ts` covers limits/proxy guards;
+and authority denies; `current-session-totp.integration.test.ts` exercises the
+actual installed auth handler with enrollment, challenge, disable, rotation,
+backup-code, revoke, disabled-user, recovery and forged-field cases;
+`auth-security-config.test.ts` covers limits/proxy guards;
 principal tests cover role/scope rules. Browser shell suite proves invalid-login
 throttling, not successful TOTP/recovery. TARGET proof includes one-time token
 expiry/replay/atomicity, disabled/revoked user on next request, fresh org/project

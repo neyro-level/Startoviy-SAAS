@@ -157,6 +157,7 @@ model Session {
   activeTeamId String?
   activeOrganizationId String?
   twoFactorVerifiedAt DateTime?
+  twoFactorProof String?
   setupCompletedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
