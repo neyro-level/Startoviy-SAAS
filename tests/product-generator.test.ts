@@ -12,7 +12,7 @@ import { parse } from "yaml";
 const temporary: string[] = [];
 const repository = process.cwd();
 const git = (root: string, ...args: string[]) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-const overlays = ["scripts/product-generator.mjs", "scripts/create-product.mjs", "scripts/ci/verify-github-policy.mjs", "scripts/verify-final-conformance.mjs", "scripts/verify-clean-room-derivation.mjs", "scripts/verify-derivation.mjs", "tests/github-policy.test.ts", "tests/derivation-contract.test.ts", "docs/adr/ADR-004-neutral-identity-derivation-contract.md"];
+const overlays = ["scripts/product-generator.mjs", "scripts/create-product.mjs", "scripts/ci/verify-github-policy.mjs", "scripts/verify-final-conformance.mjs", "scripts/verify-clean-room-derivation.mjs", "scripts/verify-derivation.mjs", "tests/github-policy.test.ts", "tests/derivation-contract.test.ts", "tests/platform-http.test.ts", "docs/adr/ADR-004-neutral-identity-derivation-contract.md"];
 
 function sourceFixture() {
   const parent = mkdtempSync(path.join(tmpdir(), "ams-generator-contract-")); temporary.push(parent);
@@ -65,6 +65,17 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it("executes generated health contracts with a service ID distinct from the product slug", () => {
+    const source = sourceFixture(); const config = input(source.root, "health-contract");
+    config.identity.serviceId = "health-web";
+    const options = { sourceRoot: source.root, sourceSha: source.sha, targetRoot: path.join(source.parent, "health"), input: config };
+    applyProduct(options, planProduct(options).planHash);
+    // Only this owned fixture borrows installed dependencies; generation itself
+    // never copies or changes node_modules in either repository.
+    symlinkSync(path.join(repository, "node_modules"), path.join(options.targetRoot, "node_modules"), "dir");
+    const output = execFileSync(process.execPath, [path.join(repository, "node_modules/vitest/vitest.mjs"), "run", "tests/platform-http.test.ts"], { cwd: options.targetRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    expect(output).toContain("2 passed");
+  });
   it("rejects mixed-case source identity before creating a target", () => {
     const source = sourceFixture(); const config = input(source.root, "atlas-portal");
     config.identity.description = JSON.parse(readFileSync(path.join(source.root, "starter.identity.json"), "utf8")).identity.productSlug.toUpperCase();
