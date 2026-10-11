@@ -1,22 +1,17 @@
-import { execFileSync, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
-  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifyDerivation } from "./verify-derivation.mjs";
-import { validateGithubPolicy } from "./ci/verify-github-policy.mjs";
 import { assertNoInheritedExecutionArtifacts } from "./execution-artifact-policy.mjs";
+import { runDerivationSmoke } from "./derivation-smoke.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const derivedRepository = "https://github.com/clean-room/atlas-portal.git";
@@ -33,10 +28,6 @@ const sample = {
   legalOperatorEmail: "operator@atlas.example.com",
   legalOperatorAddress: "Clean Room Verification Address",
 };
-const proofEnvironment = {
-  BETTER_AUTH_URL: sample.publicOrigin,
-  BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
-};
 const replacements = [
   [["https://", "ams", "-start.example"].join(""), sample.publicOrigin],
   [["ams", "-start.example"].join(""), new URL(sample.publicOrigin).hostname],
@@ -52,19 +43,6 @@ const replacements = [
 
 function transform(value) {
   return replacements.reduce((result, [from, to]) => result.replaceAll(from, to), value);
-}
-
-function run(command, args, cwd) {
-  const isWindowsPnpm = process.platform === "win32" && command === "pnpm";
-  const executable = isWindowsPnpm ? (process.env.ComSpec ?? "cmd.exe") : command;
-  const commandArgs = isWindowsPnpm ? ["/d", "/s", "/c", ["pnpm", ...args].join(" ")] : args;
-  const result = spawnSync(executable, commandArgs, {
-    cwd,
-    env: { ...process.env, ...proofEnvironment, CI: "1", NEXT_TELEMETRY_DISABLED: "1" },
-    stdio: "inherit",
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed with status ${result.status}.`);
 }
 
 function trackedFiles(sourceRoot) {
@@ -123,73 +101,27 @@ export function createDisposableCopy(root, sourceRoot = repositoryRoot, moduleSt
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-function assertRepositoryContract(root) {
-  const branch = execFileSync("git", ["branch", "--show-current"], { cwd: root, encoding: "utf8" }).trim();
-  const remote = execFileSync("git", ["remote", "get-url", "origin"], { cwd: root, encoding: "utf8" }).trim();
-  if (branch !== "main") throw new Error(`Derived default branch mismatch: ${branch}`);
-  if (remote !== derivedRepository) {
-    throw new Error("Derived repository origin mismatch.");
-  }
-  if (existsSync(path.join(root, ".sourcecraft"))) throw new Error("GitHub-only copy inherited an optional mirror.");
-  const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
-  assertNoInheritedExecutionArtifacts(files);
-  validateGithubPolicy(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"), {
-    nodeVersion: readFileSync(path.join(root, ".node-version"), "utf8").trim(),
-    packageManager: JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).packageManager,
-    vendorWorkflow: readFileSync(path.join(root, ".github/workflows/ams-verify.yml"), "utf8"),
-    vendorLock: JSON.parse(readFileSync(path.join(root, ".github/workflows/ams-verify.yml.lock.json"), "utf8")),
-    profile: JSON.parse(readFileSync(path.join(root, "starter.identity.json"), "utf8")).derivation.deliveryProfile,
-  });
-  const architecture = readFileSync(path.join(root, "docs/03_ARCHITECTURE.md"), "utf8");
-  if (!architecture.includes("DELIVERY_PROFILE = COMMERCIAL")) {
-    throw new Error("Derived delivery profile transition was not recorded.");
-  }
-  const migrations = execFileSync("git", ["ls-files", "prisma/migrations"], { cwd: root, encoding: "utf8" })
-    .split(/\r?\n/u)
-    .filter(Boolean);
-  if (migrations.length === 0) throw new Error("Derived migration baseline is empty.");
-  const migrationText = migrations.map((file) => readFileSync(path.join(root, file), "utf8")).join("\n");
-  if (!migrationText.includes("atlas_portal_web") || migrationText.includes(["ams", "_start"].join(""))) {
-    throw new Error("Derived migration runtime-role ownership was not renamed.");
-  }
-}
-
-function main() {
+async function main() {
+  const flags = new Map();
   const args = process.argv.slice(2);
-  if (args.length && (args.length !== 2 || args[0] !== "--modules" || !["enabled", "disabled", "not_applicable"].includes(args[1]))) throw new Error("Usage: derive:smoke [--modules enabled|disabled|not_applicable]");
-  const moduleState = args[1] ?? null;
-  // pnpm may choose a different default store for /tmp on another filesystem.
-  // Reuse the source install's actual store and keep the copy install offline.
-  proofEnvironment.pnpm_config_store_dir = execFileSync(
-    process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "pnpm",
-    process.platform === "win32" ? ["/d", "/s", "/c", "pnpm store path"] : ["store", "path"],
-    { cwd: repositoryRoot, encoding: "utf8" },
-  ).trim();
-  const root = mkdtempSync(path.join(tmpdir(), "ams-clean-room-proof-"));
-  try {
-    createDisposableCopy(root, repositoryRoot, moduleState);
-    run("git", ["init", "--quiet", "--initial-branch=main"], root);
-    run("git", ["remote", "add", "origin", derivedRepository], root);
-    run("git", ["add", "."], root);
-    run("git", ["-c", "user.name=Clean Room Proof", "-c", "user.email=proof@localhost", "commit", "--quiet", "-m", "Initialize derived product"], root);
-
-    const violations = verifyDerivation({ root, manifestPath: path.join(root, "starter.identity.json") });
-    if (violations.length > 0) {
-      throw new Error(`Clean-room identity violations:\n${violations.map((item) => `- ${item}`).join("\n")}`);
-    }
-    assertRepositoryContract(root);
-    run("pnpm", ["install", "--offline", "--frozen-lockfile"], root);
-    run("pnpm", ["prisma:generate"], root);
-    run("pnpm", ["docs:check"], root);
-    run("pnpm", ["verify:quick"], root);
-    run("pnpm", ["test:unit"], root);
-    run("pnpm", ["build"], root);
-    run("pnpm", ["worker:build"], root);
-    run("node", ["scripts/verify-optional-profile.mjs"], root);
-    process.stdout.write(`${JSON.stringify({ status: "PASS", disposable: true, published: false, production: false })}\n`);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
+  for (let index = 0; index < args.length; index += 2) {
+    const key = args[index]; const value = args[index + 1];
+    if (!["--modules", "--runs", "--native", "--browser", "--evidence"].includes(key) || !value || value.startsWith("--") || flags.has(key)) throw new Error("Invalid smoke option/value");
+    flags.set(key, value);
   }
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
+  try {
+    const evidence = await runDerivationSmoke({ sourceRoot: repositoryRoot, moduleState: flags.get("--modules") ?? null,
+      runs: Number(flags.get("--runs") ?? 2), native: flags.get("--native") ?? "auto", browser: flags.get("--browser") ?? "auto",
+      evidencePath: flags.has("--evidence") ? path.resolve(flags.get("--evidence")) : null, signal: controller.signal });
+    process.stdout.write(`${JSON.stringify(evidence)}\n`);
+  } catch (error) {
+    if (error.evidence) process.stdout.write(`${JSON.stringify(error.evidence)}\n`);
+    process.stderr.write("Derivation smoke failed or cancelled; required checks were not all proven.\n");
+    process.exitCode = controller.signal.aborted ? 130 : 1;
+  } finally { process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel); }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

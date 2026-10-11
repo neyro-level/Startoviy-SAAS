@@ -20,7 +20,7 @@ const trackedSecret = (file) => file.split("/").some((part) =>
   || /^(?:credentials|id_rsa|id_ed25519)$|\.(?:pem|key|p12|pfx)$/i.test(part));
 const reserved = new Set([".github/workflows/ams-verify.yml", ".github/workflows/ams-verify.yml.lock.json"]);
 
-function readBlobs(root, entries) {
+export function readBlobs(root, entries) {
   const output = execFileSync("git", ["-C", root, "cat-file", "--batch"], {
     input: entries.map((entry) => entry.oid).join("\n") + "\n",
     maxBuffer: 64 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"],
