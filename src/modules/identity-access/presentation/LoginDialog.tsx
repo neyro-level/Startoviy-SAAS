@@ -1,4 +1,5 @@
 "use client";
+import { useProjectIdentity } from "../../../components/identity/ProjectIdentityProvider.tsx";
 
 import { LockKeyhole, LogIn, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ type LoginDialogProps = {
 };
 
 export function LoginDialog({ initialOpen = false }: LoginDialogProps) {
+  const identity = useProjectIdentity();
   const router = useRouter();
   const [open, setOpen] = useState(initialOpen);
   const [username, setUsername] = useState("");
@@ -83,7 +85,7 @@ export function LoginDialog({ initialOpen = false }: LoginDialogProps) {
           showCloseButton={!pending}
         >
           <DialogHeader>
-            <p className="text-[10px] font-bold uppercase text-[var(--ch-accent)]">АМС Старт</p>
+            <p className="text-[10px] font-bold uppercase text-[var(--ch-accent)]">{identity.productName}</p>
             <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">
               Вход в кабинет
             </DialogTitle>

@@ -13,10 +13,14 @@ function createDerivedFixture() {
   const root = mkdtempSync(path.join(tmpdir(), "ams-derivation-"));
   temporaryRoots.push(root);
   writeFileSync(path.join(root, "starter.identity.json"), JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     mode: "derived",
     identity: {
       productName: "Atlas Portal",
+      shortName: "Atlas Portal", description: "Independent application",
+      iconPath: "/atlas-portal-icon.svg", faviconPath: "/atlas-portal-favicon.svg",
+      brandMark: "AP", brandWordmark: "PORTAL",
+      legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
       productSlug: "atlas-portal",
       publicOrigin: "https://atlas.example.com",
       serviceId: "atlas-portal",
@@ -28,15 +32,17 @@ function createDerivedFixture() {
       legalOperatorEmail: "operator@atlas.example.com",
       legalOperatorAddress: "1 Example Street"
     },
+    legalReferences: { factsDocument: "docs/01_PRD.md", status: "REQUIRES_CHECK" },
     derivation: {
-      sourceRepository: "https://git.sourcecraft.dev/clean-room/atlas-portal.git",
+      sourceRepository: "https://github.com/clean-room/atlas-portal.git",
+      sourceRevision: "1".repeat(40), gitProvider: "github",
       defaultBranch: "main",
       deliveryProfile: "COMMERCIAL",
       migrationOwner: "atlas-portal",
       optionalModules: {
         outboxPlusQueue: "enabled",
         pwa: "enabled",
-        platformAdmin: "disabled"
+        platformAdmin: "disabled", outboundHttp: "disabled", objectStorage: "disabled"
       }
     }
   }, null, 2));
@@ -88,15 +94,22 @@ function createCleanRoomDerivedCopy() {
   const manifestPath = path.join(root, "starter.identity.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   manifest.mode = "derived";
+  manifest.legalReferences.status = "REQUIRES_CHECK";
+  Object.assign(manifest.identity, {
+    brandMark: "AP", brandWordmark: "PORTAL", legalOperatorName: "Atlas LLC",
+    legalOperatorEmail: "operator@atlas.example.com", legalOperatorAddress: "1 Example Street",
+    legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
+  });
   manifest.derivation = {
-    sourceRepository: "https://git.sourcecraft.dev/clean-room/atlas-portal.git",
+    sourceRepository: "https://github.com/clean-room/atlas-portal.git",
+      sourceRevision: "1".repeat(40), gitProvider: "github",
     defaultBranch: "main",
     deliveryProfile: "COMMERCIAL",
     migrationOwner: "atlas-portal",
     optionalModules: {
       outboxPlusQueue: "enabled",
       pwa: "enabled",
-      platformAdmin: "disabled"
+      platformAdmin: "disabled", outboundHttp: "disabled", objectStorage: "disabled"
     }
   };
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -161,7 +174,7 @@ describe("copy-source derivation verifier", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     manifest.identity.legalOperatorName = " ";
     writeFileSync(manifestPath, JSON.stringify(manifest));
-    expect(() => runVerifier(root)).toThrow(/identity\.legalOperatorName is required/);
+    expect(() => runVerifier(root)).toThrow(/identity\.legalOperatorName/);
   });
 
   it("rejects an undecided optional-module contract", () => {

@@ -1,10 +1,11 @@
+import { publicProjectIdentity } from "../../platform/config/project-identity.ts";
 import type { Metadata } from "next";
 import { LegalDocument } from "../../components/marketing/LegalDocument.tsx";
 import { CookiesContent } from "../../components/marketing/legal/LegalContents.tsx";
 
 export const metadata: Metadata = {
   title: "Правила использования Cookie",
-  description: "Правила использования файлов cookie и аналогичных технологий на сайте АМС Старт.",
+  description: `Правила использования файлов cookie и аналогичных технологий на сайте ${publicProjectIdentity.productName}.`,
   alternates: { canonical: "/cookies/" },
 };
 

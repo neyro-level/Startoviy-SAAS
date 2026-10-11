@@ -1,3 +1,5 @@
+import { publicProjectIdentity } from "../platform/config/project-identity.ts";
+import { ProjectIdentityProvider } from "../components/identity/ProjectIdentityProvider.tsx";
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistration } from "../components/pwa/ServiceWorkerRegistration.tsx";
 import { Toaster } from "../components/ui/sonner.tsx";
@@ -5,38 +7,38 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ams-start.example"),
+  metadataBase: new URL(publicProjectIdentity.publicOrigin),
   title: {
-    default: "АМС Старт",
-    template: "%s | АМС Старт",
+    default: publicProjectIdentity.productName,
+    template: `%s | ${publicProjectIdentity.productName}`,
   },
-  description: "Нейтральный стартовый шаблон для CRM, аналитических кабинетов и внутренних веб-приложений.",
-  applicationName: "АМС Старт",
+  description: publicProjectIdentity.description,
+  applicationName: publicProjectIdentity.productName,
   manifest: "/manifest.webmanifest",
   keywords: ["CRM", "аналитический кабинет", "внутреннее веб-приложение", "SaaS starter"],
   alternates: {
     canonical: "/",
   },
   icons: {
-    icon: [{ url: "/ams-favicon.svg", type: "image/svg+xml" }],
-    shortcut: "/ams-favicon.svg",
+    icon: [{ url: publicProjectIdentity.faviconPath, type: "image/svg+xml" }],
+    shortcut: publicProjectIdentity.faviconPath,
   },
   openGraph: {
     type: "website",
     locale: "ru_RU",
     url: "/",
-    siteName: "АМС Старт",
-    title: "АМС Старт",
-    description: "Нейтральный foundation для кабинетов, CRM, аналитики и внутренних систем.",
+    siteName: publicProjectIdentity.productName,
+    title: publicProjectIdentity.productName,
+    description: publicProjectIdentity.description,
   },
   twitter: {
     card: "summary",
-    title: "АМС Старт",
-    description: "Нейтральный foundation для кабинетов, CRM, аналитики и внутренних систем.",
+    title: publicProjectIdentity.productName,
+    description: publicProjectIdentity.description,
   },
   appleWebApp: {
     capable: true,
-    title: "АМС Старт",
+    title: publicProjectIdentity.productName,
     statusBarStyle: "black-translucent",
   },
   robots: {
@@ -60,7 +62,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className="h-full antialiased">
-      <body className="min-h-full"><NuqsAdapter>{children}</NuqsAdapter><ServiceWorkerRegistration /><Toaster /></body>
+      <body className="min-h-full"><ProjectIdentityProvider identity={publicProjectIdentity}><NuqsAdapter>{children}</NuqsAdapter><ServiceWorkerRegistration /><Toaster /></ProjectIdentityProvider></body>
     </html>
   );
 }

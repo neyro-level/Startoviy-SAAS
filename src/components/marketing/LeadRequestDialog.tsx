@@ -1,4 +1,5 @@
 "use client";
+import { useProjectIdentity } from "../identity/ProjectIdentityProvider.tsx";
 
 import { ArrowUpRight, Check, Loader2, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
@@ -57,6 +58,7 @@ function getUtmPayload() {
 }
 
 export function LeadRequestDialog() {
+  const identity = useProjectIdentity();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -129,7 +131,7 @@ export function LeadRequestDialog() {
           {submitState === "success" ? (
             <div className="py-8 pr-10">
               <span className="grid size-12 place-items-center bg-[var(--ch-accent)] text-[var(--ch-white)]"><Check className="size-6" strokeWidth={1.8} aria-hidden /></span>
-              <p className="mt-6 text-[10px] font-bold uppercase text-[var(--ch-accent)]">АМС Старт</p>
+              <p className="mt-6 text-[10px] font-bold uppercase text-[var(--ch-accent)]">{identity.productName}</p>
               <DialogTitle className="mt-3 text-3xl font-extrabold text-[var(--ch-white)]">Заявка отправлена</DialogTitle>
               <p className="mt-3 text-sm leading-6 text-[var(--ch-muted-ondark)]">Свяжемся с вами, уточним задачу и обсудим следующий шаг.</p>
               <Button type="button" variant="secondary" size="lg" className="mt-7 rounded-none bg-[var(--ch-white)] text-[var(--ch-bg-deeper)] hover:bg-[var(--ch-soft-white)]" onClick={closeDialog}>Закрыть</Button>
@@ -137,7 +139,7 @@ export function LeadRequestDialog() {
           ) : (
             <>
               <DialogHeader>
-                <p className="text-[10px] font-bold uppercase text-[var(--ch-accent)]">АМС Старт</p>
+                <p className="text-[10px] font-bold uppercase text-[var(--ch-accent)]">{identity.productName}</p>
                 <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight text-[var(--ch-white)] sm:text-[34px]">Обсудить внедрение</DialogTitle>
                 <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. В шаблоне отправка отключена, пока не подключён ваш обработчик заявок.</p>
               </DialogHeader>

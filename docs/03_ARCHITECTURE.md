@@ -167,7 +167,11 @@ No broker, S3, external provider or live HTTP consumer is a mandatory core
 service. pg-boss uses PostgreSQL; the worker is a separate process only when a
 product chooses async work. `EXISTS` worker tooling is not an enabled production
 consumer. Optional-module decisions are explicit in the identity/derivation
-contract; current manifest decisions are UNDECIDED in starter mode.
+contract. ProjectIdentityV2 has explicit defaults: outbox/PWA/platformAdmin
+enabled, outbound/objectStorage disabled. The strict platform/config validator
+owns server identity; RootLayout passes only its whitelisted public DTO to
+client labels. See DERIVATION for fields/inputs. Module flags are configuration,
+not proof of runtime guards; disabled route/worker enforcement remains TARGET.
 
 `TARGET`: disabled optional HTTP/storage/consumer APIs fail closed with a typed
 safe result and require no configured external endpoint. Disabled data paths

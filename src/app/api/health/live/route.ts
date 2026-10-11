@@ -1,3 +1,4 @@
+import { projectIdentity } from "../../../../platform/config/project-identity.ts";
 import { NextResponse } from "next/server";
 import { readReleaseSha } from "../../../../platform/config/server-environment.ts";
 import { createCorrelationId } from "../../../../platform/http/correlation.ts";
@@ -10,7 +11,7 @@ export function GET() {
   const correlationId = createCorrelationId();
   const payload = liveHealthSchema.parse({
     status: "ok",
-    service: "ams-start",
+    service: projectIdentity.identity.serviceId,
     releaseSha: readReleaseSha(),
     correlationId,
     time: new Date().toISOString(),

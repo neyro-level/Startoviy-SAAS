@@ -1,6 +1,9 @@
+import { projectIdentity, publicProjectIdentity } from "../../platform/config/project-identity.ts";
 import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
-import { legalLinks, legalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
+import { legalLinks, createLegalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
+
+const legalOperator = createLegalOperator(projectIdentity.identity);
 
 export function SiteFooter() {
   const phoneHref = `tel:${legalOperator.phone.replace(/[^\d+]/g, "")}`;
@@ -9,9 +12,9 @@ export function SiteFooter() {
     <footer id="site-footer" className="start-landing border-t border-[var(--ch-border-subtle)] bg-[var(--ch-bg-deeper)] text-[var(--ch-white)]" role="contentinfo">
       <div className="mx-auto grid w-full max-w-[1360px] gap-10 px-5 py-14 sm:px-6 md:grid-cols-[1.15fr_0.85fr_0.8fr] lg:gap-16 lg:py-18">
         <div>
-          <Link href="/" className="inline-flex items-center gap-3" aria-label="АМС Старт - на главную">
-            <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">АМС</span>
-            <span className="text-sm font-extrabold">СТАРТ</span>
+          <Link href="/" className="inline-flex items-center gap-3" aria-label={`${publicProjectIdentity.productName} - на главную`}>
+            <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">{publicProjectIdentity.brandMark}</span>
+            <span className="text-sm font-extrabold">{publicProjectIdentity.brandWordmark}</span>
           </Link>
           <p className="mt-5 max-w-sm text-sm leading-6 text-[var(--ch-body-ondark)]">
             Нейтральная стартовая база для кабинетов, CRM, аналитики и внутренних веб-приложений.

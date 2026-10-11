@@ -1,3 +1,4 @@
+import { publicProjectIdentity } from "../../platform/config/project-identity.ts";
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="АМС Старт"
+        title={publicProjectIdentity.productName}
         description="Нейтральная рабочая область для будущих кабинетов, CRM, аналитики и внутренних процессов."
         actions={
           hasPermission(state.principal, "platform:manage") ? (

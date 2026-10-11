@@ -8,6 +8,41 @@ smoke. `TARGET`: approved deterministic generator is not yet implemented;
 existing smoke must not be described as a finished scaffolding CLI. No template
 distribution service or production product is created by verification.
 
+## ProjectIdentityV2: единственный источник identity
+
+`starter.identity.json` имеет schemaVersion2 и валидируется через
+[identity-contract.ts](../src/platform/config/identity-contract.ts).
+[project-identity.ts](../src/platform/config/project-identity.ts) читает его
+только в Node server/worker/scripts. Клиент получает whitelisted
+`PublicProjectIdentity` через server root и типизированный provider: name,
+slug, shortName, description, origin, icons и brand labels. Legal fields,
+source revision, operational IDs, module choices и environment туда не входят.
+Никаких credential fields в манифесте нет; unknown поля блокируются, ошибки
+показывают field paths без введённых значений.
+
+Metadata/manifest, auth appName, public/private labels, public origin,
+legal operator mapping, health service, worker ID и database application
+prefix используют этот источник. Shell/fonts/theme не меняются. Compose,
+systemd, Nginx, asset filenames и SQL role names требуют materialization
+генератором; переключение JSON не переименовывает файлы и уже существующую БД.
+Cookie/session/TOTP contracts остаются существующими auth contracts.
+
+Starter допускает demo legal placeholders и null sourceRevision. Derived
+режим требует non-placeholder legal inputs, canonical HTTPS origin без
+credentials/path/query, собственный migrationOwner и полный source SHA.
+`legalReferences.status = REQUIRES_CHECK` означает необходимость подтвердить
+реальные факты; синтаксически полный synthetic fixture не становится legal
+approval или release authority. SourceRepository здесь задаёт новый GitHub
+origin продукта; sourceRevision — commit шаблона, из которого создана копия.
+Core auth/tenant не отключаются. Module states
+`enabled/disabled/not_applicable` заданы для outboxPlusQueue, pwa,
+platformAdmin, outboundHttp и objectStorage; наличие flags не доказывает
+runtime отключение. Принудительные guards/negative profile proof — TARGET
+до соответствующей реализации. Web/worker artifacts обязаны содержать свой
+validated manifest, не читают файл соседнего продукта.
+Identity is selected before build and stays immutable in the artifact; changing
+JSON requires rebuilding/rechecking the product, not editing a running image.
+
 ## Новый производный repository
 
 1. Создайте новый repository из принятого чистого commit starter с собственной Git identity. Выберите только постоянный tracked source/canon, исключая execution artifacts; не наследуйте его
@@ -17,10 +52,11 @@ distribution service or production product is created by verification.
 3. В `starter.identity.json` установите `mode: "derived"` и замените каждое
    поле `identity` значениями нового продукта. Заполните блок `derivation`:
    собственный repository, default branch, `DELIVERY_PROFILE`, владельца
-   migration baseline и решение `enabled`/`disabled` по каждому optional module.
+   migration baseline и решение `enabled`/`disabled`/`not_applicable` по каждому optional module.
 4. Замените starter identity во всех application, documentation, operation и
-   legal files. Legal `TODO:` закрываются до публикации, не при копировании
-   в личную черновую ветку.
+   legal files. Derived identity verifier не пропускает legal `TODO:`;
+   placeholders допустимы только в режиме starter. Подтверждение реальных
+   юридических фактов остаётся отдельным release условием.
 5. Создайте собственные secrets только через approved Secret Master project;
    не переносите `.env.local`, database URLs, tokens или credentials.
 6. Настройте product-specific PostgreSQL roles/topology и exact-head GitHub
@@ -69,8 +105,8 @@ but a new product does not inherit it as tasks or readiness evidence.
 and flags legacy/example names that are not runtime inputs. Do not assume
 blank auth variables enable login, OUTBOX_WORKER_ID env is wired, or backup S3
 variables configure an application storage adapter. Current optional decisions
-are outboxPlusQueue/pwa/platformAdmin; new outbound/storage switches remain
-TARGET until their interface and disabled tests exist. No real secrets, bucket,
+are outboxPlusQueue/pwa/platformAdmin/outboundHttp/objectStorage; runtime guards
+и disabled profile tests остаются TARGET до их реализации. No real secrets, bucket,
 provider, legal approval or production database are created by derive smoke.
 
 A fresh derived copy must pass docs/config/identity/quick/unit/build and its

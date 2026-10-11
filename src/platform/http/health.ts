@@ -1,3 +1,4 @@
+import { projectIdentity } from "../config/project-identity.ts";
 import { z } from "zod";
 import { correlationIdSchema } from "./correlation.ts";
 
@@ -5,7 +6,7 @@ const releaseShaSchema = z.string().regex(/^[0-9a-f]{40}$/).nullable();
 
 export const liveHealthSchema = z.object({
   status: z.literal("ok"),
-  service: z.literal("ams-start"),
+  service: z.literal(projectIdentity.identity.serviceId),
   releaseSha: releaseShaSchema,
   correlationId: correlationIdSchema,
   time: z.string().datetime({ offset: true }),
@@ -13,7 +14,7 @@ export const liveHealthSchema = z.object({
 
 export const readyHealthSchema = z.object({
   status: z.literal("ready"),
-  service: z.literal("ams-start"),
+  service: z.literal(projectIdentity.identity.serviceId),
   releaseSha: releaseShaSchema,
   correlationId: correlationIdSchema,
   dependencies: z.object({

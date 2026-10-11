@@ -1,3 +1,4 @@
+import { projectIdentity } from "../platform/config/project-identity.ts";
 import {
   drainOutbox,
   runOutboxWorker,
@@ -16,7 +17,7 @@ async function main() {
   }
 
   if (command === "outbox-drain") {
-    const result = await drainOutbox({ workerId: argument ?? "ams-start-worker" });
+    const result = await drainOutbox({ workerId: argument ?? projectIdentity.identity.workerId });
     logger.info({ event: "outbox_drain_finished", ...result }, "outbox drain finished");
     if (result.failed > 0) {
       process.exitCode = 1;
@@ -31,7 +32,7 @@ async function main() {
     process.once("SIGTERM", stop);
     try {
       const result = await runOutboxWorker({
-        workerId: argument ?? `ams-start-worker-${process.pid}`,
+        workerId: argument ?? `${projectIdentity.identity.workerId}-${process.pid}`,
         pollIntervalMs: Number(process.env.OUTBOX_POLL_DELAY_MS ?? 1_000),
         shutdownDrainTimeoutMs: Number(
           process.env.OUTBOX_SHUTDOWN_DRAIN_TIMEOUT_MS ?? 30_000,

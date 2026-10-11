@@ -1,12 +1,24 @@
-export const legalOperator = {
-  name: "TODO: юридическое лицо или ИП",
-  inn: "TODO: ИНН",
-  ogrnip: "TODO: ОГРН/ОГРНИП",
-  address: "TODO: юридический адрес",
-  email: "TODO: email оператора",
-  phone: "TODO: телефон",
-  site: "https://ams-start.example",
-} as const;
+interface LegalIdentity {
+  legalOperatorName: string;
+  legalOperatorInn: string;
+  legalOperatorOgrn: string;
+  legalOperatorAddress: string;
+  legalOperatorEmail: string;
+  legalOperatorPhone: string;
+  publicOrigin: string;
+}
+
+export function createLegalOperator(identity: LegalIdentity) {
+  return {
+    name: identity.legalOperatorName,
+    inn: identity.legalOperatorInn,
+    ogrnip: identity.legalOperatorOgrn,
+    address: identity.legalOperatorAddress,
+    email: identity.legalOperatorEmail,
+    phone: identity.legalOperatorPhone,
+    site: identity.publicOrigin,
+  };
+}
 
 export const publicContacts = {
   telegram: "https://example.com/telegram",

@@ -1,3 +1,4 @@
+import { parseProjectIdentityJson } from "../src/platform/config/identity-contract.ts";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -72,61 +73,18 @@ function listTrackedFiles(root) {
   }
 }
 
-function validateIdentity(identity) {
+export function verifyDerivation({ root, manifestPath }) {
+  let manifest;
+  try { manifest = parseProjectIdentityJson(readFileSync(manifestPath, "utf8")); }
+  catch (error) { return [error.message]; }
   const violations = [];
+  if (manifest.mode !== "derived") violations.push("identity manifest mode must be derived");
   for (const field of requiredIdentityFields) {
-    const value = identity?.[field];
-    if (typeof value !== "string" || !value.trim()) {
-      violations.push(`identity.${field} is required`);
-      continue;
-    }
-    if (starterTokens.includes(value) || value.includes(["TO", "DO:"].join(""))) {
+    const value = manifest.identity?.[field];
+    if (typeof value === "string" && starterTokens.some((token) => value.includes(token))) {
       violations.push(`identity.${field} still contains a starter placeholder`);
     }
   }
-  try {
-    const origin = new URL(identity.publicOrigin);
-    if (origin.protocol !== "https:" || origin.hostname === "localhost" || origin.hostname.endsWith(".example")) {
-      violations.push("identity.publicOrigin must be a non-example HTTPS origin");
-    }
-  } catch {
-    violations.push("identity.publicOrigin must be a valid HTTPS origin");
-  }
-  return violations;
-}
-
-function validateDerivation(derivation, identity) {
-  const violations = [];
-  if (!derivation || typeof derivation !== "object") {
-    return ["derivation decisions are required"];
-  }
-  if (typeof derivation.sourceRepository !== "string" || !derivation.sourceRepository.trim() || derivation.sourceRepository === "UNDECIDED") {
-    violations.push("derivation.sourceRepository must identify the derived repository");
-  }
-  if (derivation.defaultBranch !== "main") {
-    violations.push("derivation.defaultBranch must be main");
-  }
-  if (!new Set(["EXPERIMENT", "COMMERCIAL", "CRITICAL"]).has(derivation.deliveryProfile)) {
-    violations.push("derivation.deliveryProfile must be explicitly selected");
-  }
-  if (derivation.migrationOwner !== identity?.productSlug) {
-    violations.push("derivation.migrationOwner must match identity.productSlug");
-  }
-  for (const moduleName of ["outboxPlusQueue", "pwa", "platformAdmin"]) {
-    if (!new Set(["enabled", "disabled"]).has(derivation.optionalModules?.[moduleName])) {
-      violations.push(`derivation.optionalModules.${moduleName} must be enabled or disabled`);
-    }
-  }
-  return violations;
-}
-
-export function verifyDerivation({ root, manifestPath }) {
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const violations = [];
-  if (manifest.schemaVersion !== 1) violations.push("identity manifest schemaVersion must be 1");
-  if (manifest.mode !== "derived") violations.push("identity manifest mode must be derived");
-  violations.push(...validateIdentity(manifest.identity));
-  violations.push(...validateDerivation(manifest.derivation, manifest.identity));
 
   for (const relativePath of listTrackedFiles(root)) {
     const normalizedPath = relativePath.replaceAll("\\", "/");

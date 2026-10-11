@@ -1,3 +1,4 @@
+import { projectIdentity } from "../../../../platform/config/project-identity.ts";
 import { NextResponse } from "next/server";
 import { hasAuthConfiguration } from "../../../../modules/identity-access/server.ts";
 import { getOperationalReadiness } from "../../../../modules/platform-operations/server.ts";
@@ -23,7 +24,7 @@ export async function GET() {
     return NextResponse.json(
       readyHealthSchema.parse({
         status: "ready",
-        service: "ams-start",
+        service: projectIdentity.identity.serviceId,
         releaseSha: readReleaseSha(),
         correlationId,
         dependencies: {

@@ -1,3 +1,4 @@
+import { publicProjectIdentity } from "../platform/config/project-identity.ts";
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
@@ -9,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/dashboard/", "/admin/", "/notifications/", "/api/"],
       },
     ],
-    sitemap: "https://ams-start.example/sitemap.xml",
-    host: "https://ams-start.example",
+    sitemap: `${publicProjectIdentity.publicOrigin}/sitemap.xml`,
+    host: publicProjectIdentity.publicOrigin,
   };
 }

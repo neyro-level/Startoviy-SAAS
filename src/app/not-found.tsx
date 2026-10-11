@@ -1,3 +1,4 @@
+import { publicProjectIdentity } from "../platform/config/project-identity.ts";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import styles from "../components/marketing/StartLanding.module.css";
@@ -6,7 +7,7 @@ const quickLinks = [
   {
     href: "/",
     label: "Главная",
-    description: "Вернуться на главную АМС Старт.",
+    description: `Вернуться на главную ${publicProjectIdentity.productName}.`,
   },
   {
     href: "/politika/",
@@ -16,7 +17,7 @@ const quickLinks = [
   {
     href: "/terms/",
     label: "Условия",
-    description: "Общие условия сотрудничества с АМС.",
+    description: `Общие условия сотрудничества с ${publicProjectIdentity.productName}.`,
   },
 ] as const;
 
@@ -30,9 +31,9 @@ export default function NotFound() {
       <div className="absolute inset-0 -z-10 bg-[image:var(--ch-not-found-atmosphere)]" aria-hidden />
 
       <div className="mx-auto w-full max-w-[980px] text-center">
-        <Link href="/" className="mx-auto inline-flex items-center gap-3" aria-label="АМС Старт - на главную">
-          <span className="grid size-12 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-xs font-extrabold">АМС</span>
-          <span className="text-sm font-extrabold">СТАРТ</span>
+        <Link href="/" className="mx-auto inline-flex items-center gap-3" aria-label={`${publicProjectIdentity.productName} - на главную`}>
+          <span className="grid size-12 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-xs font-extrabold">{publicProjectIdentity.brandMark}</span>
+          <span className="text-sm font-extrabold">{publicProjectIdentity.brandWordmark}</span>
         </Link>
 
         <p className="mt-10 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--ch-accent)]">

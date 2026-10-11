@@ -93,9 +93,16 @@ export function createDisposableCopy(root, sourceRoot = repositoryRoot) {
   const manifestPath = path.join(root, "starter.identity.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   manifest.mode = "derived";
-  manifest.identity = sample;
+  manifest.identity = { ...manifest.identity, ...sample,
+    shortName: sample.productName, brandMark: "AP", brandWordmark: "PORTAL",
+    iconPath: "/atlas-portal-icon.svg", faviconPath: "/atlas-portal-favicon.svg",
+    legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
+  };
+  manifest.legalReferences = { factsDocument: "docs/01_PRD.md", status: "REQUIRES_CHECK" };
   manifest.derivation = {
     sourceRepository: derivedRepository,
+    sourceRevision: execFileSync("git", ["rev-parse", "HEAD"], { cwd: sourceRoot, encoding: "utf8" }).trim(),
+    gitProvider: "github",
     defaultBranch: "main",
     deliveryProfile: "COMMERCIAL",
     migrationOwner: sample.productSlug,
@@ -103,6 +110,7 @@ export function createDisposableCopy(root, sourceRoot = repositoryRoot) {
       outboxPlusQueue: "enabled",
       pwa: "enabled",
       platformAdmin: "disabled",
+      outboundHttp: "disabled", objectStorage: "disabled",
     },
   };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

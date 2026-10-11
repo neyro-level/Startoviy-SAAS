@@ -37,12 +37,13 @@ FROM runtime-base AS runtime-web
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --chown=node:node --from=build /app/.next/standalone ./
+COPY --chown=node:node --from=build /app/starter.identity.json ./starter.identity.json
 ENTRYPOINT ["node", "server.js"]
 
 FROM runtime-base AS runtime-worker
 COPY --chown=node:node --from=runtime-deps /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/.runtime/worker ./.runtime/worker
-COPY --chown=node:node package.json ./package.json
+COPY --chown=node:node package.json starter.identity.json ./
 ENTRYPOINT ["node", ".runtime/worker/worker/main.js"]
 CMD ["outbox-worker"]
 
@@ -54,7 +55,7 @@ COPY --chown=node:node --from=build /app/prisma ./prisma
 COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node --from=build /app/scripts/pgboss-migrate.mjs ./scripts/pgboss-migrate.mjs
 COPY --chown=node:node scripts/migrator-entrypoint.mjs ./scripts/migrator-entrypoint.mjs
-COPY --chown=node:node package.json ./package.json
+COPY --chown=node:node package.json starter.identity.json ./
 ENTRYPOINT ["node", "scripts/migrator-entrypoint.mjs"]
 
 FROM runtime-web AS runtime

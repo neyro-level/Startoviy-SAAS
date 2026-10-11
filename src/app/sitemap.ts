@@ -1,6 +1,7 @@
+import { publicProjectIdentity } from "../platform/config/project-identity.ts";
 import type { MetadataRoute } from "next";
 
-const baseUrl = "https://ams-start.example";
+const baseUrl = publicProjectIdentity.publicOrigin;
 const lastModified = new Date("2026-09-11T00:00:00.000Z");
 
 export default function sitemap(): MetadataRoute.Sitemap {

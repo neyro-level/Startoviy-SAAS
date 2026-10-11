@@ -1,6 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { isExecutionArtifact } from "./execution-artifact-policy.mjs";
+import createManifest from "../src/app/manifest.ts";
+import { parseProjectIdentityJson } from "../src/platform/config/identity-contract.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const forbiddenTokens = [
@@ -58,16 +60,13 @@ for (const file of await collectFiles(root)) {
   }
 }
 
-const identityManifest = JSON.parse(await readFile(path.join(root, "starter.identity.json"), "utf8"));
-const expectedProductName = identityManifest.mode === "derived"
-  ? identityManifest.identity?.productName
-  : "АМС Старт";
-const appManifest = await readFile(path.join(root, "src/app/manifest.ts"), "utf8");
+const identityManifest = parseProjectIdentityJson(await readFile(path.join(root, "starter.identity.json"), "utf8"));
+const appManifest = createManifest();
 if (
-  typeof expectedProductName !== "string"
-  || !expectedProductName.trim()
-  || !appManifest.includes(`name: ${JSON.stringify(expectedProductName)}`)
-  || !appManifest.includes('display: "standalone"')
+  appManifest.name !== identityManifest.identity.productName
+  || appManifest.short_name !== identityManifest.identity.shortName
+  || appManifest.icons?.[0]?.src !== identityManifest.identity.iconPath
+  || appManifest.display !== "standalone"
 ) {
   violations.push("src/app/manifest.ts: PWA manifest must be installable and match starter.identity.json");
 }
