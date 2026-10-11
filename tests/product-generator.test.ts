@@ -65,6 +65,28 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it("rejects mixed-case source identity before creating a target", () => {
+    const source = sourceFixture(); const config = input(source.root, "atlas-portal");
+    config.identity.description = JSON.parse(readFileSync(path.join(source.root, "starter.identity.json"), "utf8")).identity.productSlug.toUpperCase();
+    const target = path.join(source.parent, "case-residue");
+    expect(() => planProduct({ sourceRoot: source.root, sourceSha: source.sha, targetRoot: target, input: config })).toThrow("identity marker");
+    expect(existsSync(target)).toBe(false);
+  });
+  it("cleans a generated target if final whole-source verification rejects residue", () => {
+    const source = sourceFixture();
+    const marker = JSON.parse(readFileSync(path.join(source.root, "starter.identity.json"), "utf8")).identity.productSlug.toUpperCase();
+    const readme = path.join(source.root, "README.md");
+    writeFileSync(readme, readFileSync(readme, "utf8") + `\nMixed casing ${marker}\n`);
+    git(source.root, "add", "README.md");
+    git(source.root, "-c", "core.hooksPath=", "-c", "commit.gpgSign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@localhost", "commit", "--quiet", "-m", "Source residue fixture");
+    const sha = git(source.root, "rev-parse", "HEAD");
+    const options = { sourceRoot: source.root, sourceSha: sha, targetRoot: path.join(source.parent, "residue"), input: input(source.root, "atlas-portal") };
+    const plan = planProduct(options);
+    expect(() => applyProduct(options, plan.planHash)).toThrow("Generated derivation verification failed");
+    expect(existsSync(options.targetRoot)).toBe(false);
+    expect(git(source.root, "rev-parse", "HEAD")).toBe(sha);
+  });
+
   it("rejects a selected checkout whose generator implementation differs", () => {
     const source = sourceFixture();
     const file = path.join(source.root, "scripts/product-generator.mjs");
@@ -261,6 +283,9 @@ describe("nonpublishing product generator", () => {
     const compose = parse(read("docker-compose.production.yml"));
     expect(Object.keys(compose.services).sort()).toEqual(["migrate", "web"]);
     expect(read("scripts/deploy-production.mjs")).not.toContain("up -d web worker");
+    expect(read("ops/release/rollback.sh")).not.toContain("up -d web worker");
+    expect(read("ops/release/live-proof.sh")).toContain("probe /admin 404");
+    expect(read("ops/release/live-proof.sh")).not.toContain("probe /admin 302");
     const unit = read(`ops/systemd/${config.identity.serviceId}-web.service`);
     expect(unit).not.toContain("up -d web worker");
     expect(unit).not.toContain("stop web worker");

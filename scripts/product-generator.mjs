@@ -6,6 +6,7 @@ import { parseProjectIdentity, parseProjectIdentityJson } from "../src/platform/
 import { assertNoInheritedExecutionArtifacts } from "./execution-artifact-policy.mjs";
 import { scanText } from "./ci/scan-secrets.mjs";
 import { validateGithubPolicy } from "./ci/verify-github-policy.mjs";
+import { donorMarkers, sourceMarkers, verifyDerivation } from "./verify-derivation.mjs";
 import { parse, stringify } from "yaml";
 
 const shaPattern = /^[0-9a-f]{40}$/;
@@ -21,7 +22,7 @@ const trackedSecret = (file) => file.split("/").some((part) =>
 const reserved = new Set([".github/workflows/ams-verify.yml", ".github/workflows/ams-verify.yml.lock.json"]);
 const implementationFiles = ["scripts/product-generator.mjs", "scripts/create-product.mjs",
   "src/platform/config/identity-contract.ts", "scripts/execution-artifact-policy.mjs",
-  "scripts/ci/scan-secrets.mjs", "scripts/ci/verify-github-policy.mjs", "package.json", "pnpm-lock.yaml"];
+  "scripts/ci/scan-secrets.mjs", "scripts/ci/verify-github-policy.mjs", "scripts/verify-derivation.mjs", "package.json", "pnpm-lock.yaml"];
 
 function githubRepositoryIdentity(value) {
   try {
@@ -144,9 +145,10 @@ function materializeText(source, file, before, config) {
     result = result.replaceAll(`service === "${to.productSlug}"`, `service === "${to.serviceId}"`)
       .replaceAll(`payload["service"] == "${to.productSlug}"`, `payload["service"] == "${to.serviceId}"`);
   }
-  if ((file === "scripts/deploy-production.mjs" || /^ops\/systemd\/.*-web\.service$/u.test(file)) && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
+  if ((file === "scripts/deploy-production.mjs" || file === "ops/release/rollback.sh" || /^ops\/systemd\/.*-web\.service$/u.test(file)) && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
     result = result.replaceAll("up -d web worker", "up -d web").replaceAll("stop web worker", "stop web");
   }
+  if (file === "ops/release/live-proof.sh" && config.derivation.optionalModules.platformAdmin !== "enabled") result = result.replace("probe /admin 302,303,307,308", "probe /admin 404");
   if (file === "scripts/release-contract.mjs") result = result.replace(`application: "${to.productSlug}"`, `application: "${to.serviceId}"`);
   if (file === "docker-compose.production.yml") result = result.replace(`name: ${to.productSlug}`, `name: ${to.serviceId}`);
   if (file === "docker-compose.production.yml" && config.derivation.optionalModules.outboxPlusQueue !== "enabled") {
@@ -221,7 +223,8 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
   if (!productRepository || config.identity.productSlug === sourceManifest.identity.productSlug || sourceRepositories.includes(productRepository)) throw new Error("Product must have its own slug and repository origin");
   const oldIdentity = sourceManifest.identity;
   const oldMarkers = [oldIdentity.productName, oldIdentity.productSlug, oldIdentity.productSlug.replaceAll("-", "_"), oldIdentity.productSlug.replaceAll("-", "_").toUpperCase(), oldIdentity.repositorySlug, new URL(oldIdentity.publicOrigin).hostname];
-  if (oldMarkers.some((marker) => JSON.stringify(config).includes(marker))) throw new Error("Input still contains a source identity marker");
+  const configured = JSON.stringify(config).toLocaleLowerCase("en-US");
+  if ([...oldMarkers, ...sourceMarkers, ...donorMarkers].some((marker) => configured.includes(marker.toLocaleLowerCase("en-US")))) throw new Error("Input still contains a source or donor identity marker");
   const blobs = readBlobs(root, entries);
   verifyWorkflow(blobs, sourceManifest.derivation.deliveryProfile);
   const omitted = new Set(entries.filter((entry) => entry.file.startsWith(".sourcecraft/")
@@ -285,6 +288,8 @@ export function applyProduct(options, expectedPlanHash) {
     git(root, "-c", `core.hooksPath=${hookDir}`, "add", ".");
     const indexed = new Set(git(root, "ls-files", "-z").toString("utf8").split("\0").filter(Boolean));
     if (prepared.files.some((file) => !indexed.has(file.to))) throw new Error("Copied Git ignore excludes permanent product source");
+    const violations = verifyDerivation({ root, manifestPath: path.join(root, "starter.identity.json") });
+    if (violations.length) throw new Error(`Generated derivation verification failed: ${violations.join("; ")}`);
     git(root, "-c", `core.hooksPath=${hookDir}`, "-c", "commit.gpgSign=false", "-c", "user.name=Product Generator", "-c", "user.email=generator@localhost", "commit", "--quiet", "-m", "Initialize independent product");
     complete = true;
     return { ...prepared.publicPlan, status: "CREATED", derivedSha: textGit(root, "rev-parse", "HEAD") };
