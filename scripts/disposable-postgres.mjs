@@ -2,12 +2,12 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { runProofProcess } from "./proof-process.mjs";
-import { startNativeProofPostgres } from "./native-proof-postgres.mjs";
+import { nativeProofPostgresEligible, startNativeProofPostgres } from "./native-proof-postgres.mjs";
 
 export const proofPostgresImage = "postgres@sha256:afc7e2d441324c0388fa80c3d24f733b4194a4eb7f47dd8ee2b08eb1a24a647c";
 
 export async function startDisposablePostgres({ directory, env, signal, slug }) {
-  if (existsSync("/usr/lib/postgresql/18/bin/initdb")) return startNativeProofPostgres({ env, signal, slug });
+  if (nativeProofPostgresEligible({ env })) return startNativeProofPostgres({ env, signal, slug });
   const run = async (args, options = {}) => {
     try { return await runProofProcess("docker", args, { env, signal, capture: true, timeoutMs: 30_000, ...options }); }
     catch { throw new Error(`Owned Docker database operation failed: ${args[0]}`); }

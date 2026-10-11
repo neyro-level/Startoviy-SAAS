@@ -1,13 +1,22 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runProofProcess } from "./proof-process.mjs";
 
+export function nativeProofPostgresEligible({ env, rootUser = process.getuid?.() === 0,
+  insideContainer = existsSync("/.dockerenv"), hasTool = (file) => {
+    try { accessSync(file, constants.X_OK); return true; } catch { return false; }
+  },
+}) {
+  const completeTools = ["initdb", "pg_ctl", "postgres", "psql"].every((name) => hasTool(path.join("/usr/lib/postgresql/18/bin", name)));
+  return completeTools && (!rootUser || (env.GITHUB_ACTIONS === "true" && env.RUNNER_ENVIRONMENT === "github-hosted" && insideContainer));
+}
+
 // This creates a separate cluster, never borrows a running service or database.
 export async function startNativeProofPostgres({ env, signal, slug }) {
   const bin = "/usr/lib/postgresql/18/bin";
-  if (!["initdb", "pg_ctl", "postgres", "psql"].every((name) => existsSync(path.join(bin, name)))) throw new Error("Owned PostgreSQL18 tools unavailable");
+  if (!nativeProofPostgresEligible({ env })) throw new Error("Owned PostgreSQL18 native runtime unavailable");
   const rootUser = process.getuid?.() === 0;
   if (rootUser && !(env.GITHUB_ACTIONS === "true" && env.RUNNER_ENVIRONMENT === "github-hosted" && existsSync("/.dockerenv"))) throw new Error("Root native proof requires the hosted CI container");
   const directory = mkdtempSync(path.join(tmpdir(), "ams-native-proof-"));
