@@ -93,7 +93,10 @@ and authority denies; `current-session-totp.integration.test.ts` exercises the
 actual installed auth handler with enrollment, challenge, disable, rotation,
 backup-code, revoke, disabled-user, recovery and forged-field cases;
 `auth-security-config.test.ts` covers limits/proxy guards;
-principal tests cover role/scope rules. Browser shell suite proves invalid-login
-throttling, not successful TOTP/recovery. TARGET proof includes one-time token
+principal tests cover role/scope rules. `current-session-totp.spec.ts` exercises
+real browser cookies, password-only and invalid-TOTP deny, successful TOTP
+admin access, hidden proof fields and denial after factor disable at four
+viewport sizes. It captures no trace, video or screenshot containing auth material.
+Browser shell tests cover invalid-login throttling. TARGET proof includes one-time token
 expiry/replay/atomicity, disabled/revoked user on next request, fresh org/project
 permissions, success and failures for full setup/TOTP/recovery, and safe delivery.

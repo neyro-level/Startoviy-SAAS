@@ -12,6 +12,7 @@ import { completePlatformRecovery } from "../../src/modules/identity-access/serv
 const password = "Synthetic-totp-fixture-only-0000";
 const base = process.env.BETTER_AUTH_URL!;
 const ownedUsers: string[] = [];
+const ownedOrganizations: string[] = [];
 const prisma = getPrismaClient();
 type Jar = Map<string, string>;
 const headers = (jar: Jar) => new Headers({ cookie: [...jar].map(([a, b]) => `${a}=${b}`).join("; ") });
@@ -44,9 +45,22 @@ async function verify(jar: Jar, uri: string) {
   const response = await post(jar, "/two-factor/verify-totp", { code: await otp(uri).totp(), trustDevice: false }); expect(response.status).toBe(200);
 }
 beforeEach(async () => { expect(auth).not.toBeNull(); await prisma.rateLimit.deleteMany(); });
-afterEach(async () => { await prisma.user.deleteMany({ where: { id: { in: ownedUsers.splice(0) } } }); });
+afterEach(async () => {
+  await prisma.user.deleteMany({ where: { id: { in: ownedUsers.splice(0) } } });
+  await prisma.organization.deleteMany({ where: { id: { in: ownedOrganizations.splice(0) } } });
+});
 
 describe("actual Better Auth current-session TOTP authority", () => {
+  it("denies a live authenticated member immediately after membership removal", async () => {
+    const f = await fixture();
+    await prisma.user.update({ where: { id: f.id }, data: { systemRole: "MEMBER" } });
+    const organizationId = randomUUID(); ownedOrganizations.push(organizationId);
+    await prisma.organization.create({ data: { id: organizationId, slug: `fixture-${organizationId}`, name: "Synthetic Membership", members: { create: { userId: f.id, tenantRole: "ORG_MEMBER" } } } });
+    expect(await principal(f.id, f.jar)).toMatchObject({ principal: { kind: "tenant-user", organizationId } });
+    await prisma.member.deleteMany({ where: { organizationId, userId: f.id } });
+    expect(await session(f.jar)).not.toBeNull();
+    expect(await principal(f.id, f.jar)).toBeNull();
+  });
   it("denies password-only/body spoof and grants only a real successful current TOTP", async () => {
     const f = await fixture(); const initial = await session(f.jar); expect(initial).not.toBeNull();
     const row = await prisma.session.findUniqueOrThrow({ where: { id: initial!.session.id } });
