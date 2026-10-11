@@ -2,15 +2,16 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { parse } from "yaml";
 
 const sharedVerifier = "neyro-level/AMS_DELIVERY_CORE/.github/workflows/verify.yml@a39227c11a017bf126d3ba416f8dd5da7ff24449";
 const runtimeImage = "node@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2";
 const exactHead = "${{ github.event.pull_request.head.sha || github.sha }}";
 
-// JSON is a YAML subset. Parse the actual workflow structurally, without a
-// substring-only gate that could accept conflicting permissions or extra jobs.
+// Parse the actual workflow structurally; reject duplicate keys and aliases
+// instead of accepting conflicting permissions through substring matching.
 export function validateGithubPolicy(source, { nodeVersion, packageManager }) {
-  const workflow = JSON.parse(source);
+  const workflow = parse(source, { uniqueKeys: true, maxAliasCount: 0 });
   const expected = {
     name: "Starter commercial verification",
     on: { pull_request: { branches: ["main"] }, push: { branches: ["main"] } },

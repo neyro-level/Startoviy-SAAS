@@ -1,13 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { validateGithubPolicy } from "../scripts/ci/verify-github-policy.mjs";
 
 const runtime = { nodeVersion: "24.20.0", packageManager: "pnpm@11.5.1" };
-const current = () => JSON.parse(readFileSync(".github/workflows/ci.yml", "utf8"));
+const current = () => parse(readFileSync(".github/workflows/ci.yml", "utf8"));
 
 describe("GitHub commercial consumer", () => {
   it("accepts the actual frozen-runtime exact-head consumer", () => {
     expect(() => validateGithubPolicy(JSON.stringify(current()), runtime)).not.toThrow();
+  });
+
+  it("rejects duplicate permission keys instead of silently accepting an override", () => {
+    const source = readFileSync(".github/workflows/ci.yml", "utf8");
+    expect(() => validateGithubPolicy(`${source}\npermissions: {contents: write}\n`, runtime)).toThrow();
   });
 
   it("rejects unsafe events, elevated token, inherited secrets and extra executable jobs", () => {
