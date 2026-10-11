@@ -19,6 +19,9 @@ const trackedSecret = (file) => file.split("/").some((part) =>
   || (part.startsWith(".env") && part !== ".env.example")
   || /^(?:credentials|id_rsa|id_ed25519)$|\.(?:pem|key|p12|pfx)$/i.test(part));
 const reserved = new Set([".github/workflows/ams-verify.yml", ".github/workflows/ams-verify.yml.lock.json"]);
+const implementationFiles = ["scripts/product-generator.mjs", "scripts/create-product.mjs",
+  "src/platform/config/identity-contract.ts", "scripts/execution-artifact-policy.mjs",
+  "scripts/ci/scan-secrets.mjs", "scripts/ci/verify-github-policy.mjs", "package.json", "pnpm-lock.yaml"];
 
 function githubRepositoryIdentity(value) {
   try {
@@ -178,6 +181,13 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
   if (realpathSync(textGit(root, "rev-parse", "--show-toplevel")) !== root) throw new Error("sourceRoot must be the exact repository root");
   if (textGit(root, "status", "--porcelain", "--untracked-files=no")) throw new Error("Source tracked worktree must be clean");
   if (textGit(root, "rev-parse", `${sourceSha}^{commit}`) !== sourceSha) throw new Error("Source commit is unavailable");
+  if (textGit(root, "rev-parse", "HEAD") !== sourceSha) throw new Error("sourceSha must match the checked-out HEAD");
+  // --source may identify another checkout. Its recorded commit must contain
+  // the implementation actually executing here, including imported contracts.
+  for (const file of implementationFiles) {
+    const executing = readFileSync(new URL(`../${file}`, import.meta.url));
+    if (!git(root, "show", `${sourceSha}:${file}`).equals(executing)) throw new Error("Executing generator implementation differs from sourceSha");
+  }
   const target = path.join(realpathSync(path.dirname(path.resolve(targetRoot))), path.basename(path.resolve(targetRoot)));
   const relative = path.relative(root, target);
   if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))) throw new Error("Target must be outside the source repository");

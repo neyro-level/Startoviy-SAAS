@@ -19,9 +19,16 @@ assets and the runtime declares SVG MIME; it does not convert PNG/ICO bytes.
 Origin hostnames require valid bounded DNS labels or a canonical IPv6 literal;
 arbitrary URL-host punctuation cannot enter generated proxy configuration.
 `mode` becomes derived; null `sourceRevision` is filled from `--source-sha`,
-an explicitly different revision is rejected. Actual legal provenance stays
+which must match the clean checkout's HEAD. Check out the desired commit before
+running its generator; older reachable trees cannot be mixed with newer code.
+When `--source` names another checkout, its generator, imported validation
+contracts and dependency manifests must match the executing implementation.
+An explicitly different revision is rejected. Actual legal provenance stays
 REQUIRES_CHECK; fixtures never establish release authority. Do not put secrets
 or environment values in input JSON or flags.
+Derived origins reject `.example` and `example.com/net/org`, including their
+subdomains. Disposable proofs use `.test` origins and local HTTP listeners;
+they do not prove DNS ownership, live domain readiness or publication.
 
 ```bash
 pnpm derive:create --source-sha "$TEMPLATE_SHA" --input /path/product.json --target /path/new-product --dry-run

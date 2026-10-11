@@ -50,10 +50,10 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
   manifest.mode = "derived";
   Object.assign(manifest.identity, {
     productName: `Generated ${slug}`, shortName: "Independent App",
-    productSlug: slug, publicOrigin: `https://${slug}.example.com`, serviceId: slug, workerId: `${slug}-worker`,
+    productSlug: slug, publicOrigin: `https://${slug}.test`, serviceId: slug, workerId: `${slug}-worker`,
     databaseApplicationPrefix: slug, artifactPrefix: slug, repositorySlug: slug,
     iconPath: `/${slug}-icon.svg`, faviconPath: `/${slug}-favicon.svg`, brandMark: "AP", brandWordmark: "PRODUCT",
-    legalOperatorName: "Synthetic Operator", legalOperatorEmail: `operator@${slug}.example.com`,
+    legalOperatorName: "Synthetic Operator", legalOperatorEmail: `operator@${slug}.test`,
     legalOperatorAddress: "Synthetic Fixture Address", legalOperatorInn: "1234567890",
     legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
   });
@@ -65,6 +65,30 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it("rejects a selected checkout whose generator implementation differs", () => {
+    const source = sourceFixture();
+    const file = path.join(source.root, "scripts/product-generator.mjs");
+    writeFileSync(file, readFileSync(file, "utf8") + "\n// Different selected implementation\n");
+    git(source.root, "add", "scripts/product-generator.mjs");
+    git(source.root, "-c", "core.hooksPath=", "-c", "commit.gpgSign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@localhost", "commit", "--quiet", "-m", "Different generator fixture");
+    const target = path.join(source.parent, "different-code");
+    expect(() => planProduct({ sourceRoot: source.root, sourceSha: git(source.root, "rev-parse", "HEAD"), targetRoot: target, input: input(source.root, "atlas-portal") })).toThrow("implementation differs");
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it("rejects a reachable source revision different from the clean checkout HEAD", () => {
+    const source = sourceFixture();
+    const before = source.sha;
+    writeFileSync(path.join(source.root, "README.md"), readFileSync(path.join(source.root, "README.md"), "utf8") + "\nNew synthetic revision\n");
+    git(source.root, "add", "README.md");
+    git(source.root, "-c", "core.hooksPath=", "-c", "commit.gpgSign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@localhost", "commit", "--quiet", "-m", "Next source fixture revision");
+    const target = path.join(source.parent, "old-revision");
+    expect(git(source.root, "status", "--porcelain", "--untracked-files=no")).toBe("");
+    expect(git(source.root, "rev-parse", "HEAD")).not.toBe(before);
+    expect(() => planProduct({ sourceRoot: source.root, sourceSha: before, targetRoot: target, input: input(source.root, "atlas-portal") })).toThrow("checked-out HEAD");
+    expect(existsSync(target)).toBe(false);
+  });
+
   it("materializes dollar metacharacters literally in owned labels and SVG assets", () => {
     const source = sourceFixture(); const config = input(source.root, "literal-labels");
     Object.assign(config.identity, { productName: "Dollar $& $$", brandMark: "$&", brandWordmark: "$$" });
@@ -185,20 +209,20 @@ describe("nonpublishing product generator", () => {
     const source = sourceFixture();
     const config = input(source.root, "atlas-portal");
     Object.assign(config.identity, {
-      productName: 'Atlas "Team" & Partners', publicOrigin: "https://quartz-custom.example.net:8443",
+      productName: 'Atlas "Team" & Partners', publicOrigin: "https://quartz-custom.test:8443",
       serviceId: "atlas-web", databaseApplicationPrefix: "atlas-db", artifactPrefix: "atlas-artifact",
     });
     const options = { sourceRoot: source.root, sourceSha: source.sha, targetRoot: path.join(source.parent, "custom"), input: config };
     const plan = planProduct(options); applyProduct(options, plan.planHash);
     const read = (file: string) => readFileSync(path.join(options.targetRoot, file), "utf8");
-    expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("server_name quartz-custom.example.net;");
+    expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("server_name quartz-custom.test;");
     expect(read(`ops/nginx/${config.identity.productSlug}.conf`)).toContain("listen 8443 ssl");
     const nginx = read(`ops/nginx/${config.identity.productSlug}.conf`);
-    expect(nginx.match(/proxy_set_header Host quartz-custom\.example\.net:8443;/gu)).toHaveLength(2);
-    expect(nginx.match(/proxy_set_header X-Forwarded-Host quartz-custom\.example\.net:8443;/gu)).toHaveLength(2);
+    expect(nginx.match(/proxy_set_header Host quartz-custom\.test:8443;/gu)).toHaveLength(2);
+    expect(nginx.match(/proxy_set_header X-Forwarded-Host quartz-custom\.test:8443;/gu)).toHaveLength(2);
     expect(nginx.match(/proxy_set_header X-Forwarded-Port 8443;/gu)).toHaveLength(2);
     expect(nginx).not.toContain("X-Forwarded-Port 443;");
-    expect(nginx).toContain("return 301 https://quartz-custom.example.net:8443$request_uri;");
+    expect(nginx).toContain("return 301 https://quartz-custom.test:8443$request_uri;");
     expect(read("scripts/local-dev.mjs")).toContain('service === "atlas-web"');
     expect(read("scripts/build-release.mjs")).toContain("atlas-artifact-${commitSha}.tar.gz");
     expect(read("scripts/sql/prepare-rls-test-identities.sql")).toContain("atlas_db_web");

@@ -67,7 +67,8 @@ export const projectIdentityV2Schema = z.object({
   if (value.derivation.migrationOwner !== value.identity.productSlug) issue(["derivation", "migrationOwner"]);
   if (value.mode === "derived") {
     if (!value.derivation.sourceRevision) issue(["derivation", "sourceRevision"]);
-    if (origin.hostname === "localhost" || origin.hostname.endsWith(".example") || origin.hostname === "127.0.0.1" || origin.hostname === "[::1]") issue(["identity", "publicOrigin"]);
+    const documentationDomain = ["example.com", "example.net", "example.org"].some((domain) => origin.hostname === domain || origin.hostname.endsWith(`.${domain}`));
+    if (documentationDomain || origin.hostname === "localhost" || origin.hostname.endsWith(".example") || origin.hostname === "127.0.0.1" || origin.hostname === "[::1]") issue(["identity", "publicOrigin"]);
     for (const field of ["legalOperatorName", "legalOperatorEmail", "legalOperatorAddress", "legalOperatorInn", "legalOperatorOgrn", "legalOperatorPhone"] as const) {
       if (legalPlaceholder.test(value.identity[field])) issue(["identity", field]);
     }

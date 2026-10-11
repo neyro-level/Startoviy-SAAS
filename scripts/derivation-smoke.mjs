@@ -37,10 +37,10 @@ export function buildSmokeIdentity(source, sha, moduleState) {
     return source;
   }
   const identity = { ...source.identity,
-    productName: "Atlas Portal", shortName: "Atlas", productSlug: "atlas-portal", publicOrigin: "https://atlas.example.com",
+    productName: "Atlas Portal", shortName: "Atlas", productSlug: "atlas-portal", publicOrigin: "https://atlas.test",
     serviceId: "atlas-portal", workerId: "atlas-portal-worker", databaseApplicationPrefix: "atlas-portal", artifactPrefix: "atlas-portal", repositorySlug: "atlas-portal",
     iconPath: "/atlas-portal-icon.svg", faviconPath: "/atlas-portal-favicon.svg", brandMark: "AP", brandWordmark: "PORTAL",
-    legalOperatorName: "Synthetic Proof Operator", legalOperatorEmail: "operator@atlas.example.com", legalOperatorAddress: "Synthetic Proof Address",
+    legalOperatorName: "Synthetic Proof Operator", legalOperatorEmail: "operator@atlas.test", legalOperatorAddress: "Synthetic Proof Address",
     legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
   };
   const selected = moduleState ? { outboxPlusQueue: moduleState, pwa: moduleState, platformAdmin: moduleState,

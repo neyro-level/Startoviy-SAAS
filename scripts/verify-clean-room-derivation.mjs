@@ -18,14 +18,14 @@ const derivedRepository = "https://github.com/clean-room/atlas-portal.git";
 const sample = {
   productName: "Atlas Portal",
   productSlug: "atlas-portal",
-  publicOrigin: "https://atlas.example.com",
+  publicOrigin: "https://atlas.test",
   serviceId: "atlas-portal",
   workerId: "atlas-portal-worker",
   databaseApplicationPrefix: "atlas-portal",
   artifactPrefix: "atlas-portal",
   repositorySlug: "atlas-portal",
   legalOperatorName: "Clean Room Operator",
-  legalOperatorEmail: "operator@atlas.example.com",
+  legalOperatorEmail: "operator@atlas.test",
   legalOperatorAddress: "Clean Room Verification Address",
 };
 const replacements = [

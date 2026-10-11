@@ -28,14 +28,14 @@ function createDerivedFixture() {
       brandMark: "AP", brandWordmark: "PORTAL",
       legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
       productSlug: "atlas-portal",
-      publicOrigin: "https://atlas.example.com",
+      publicOrigin: "https://atlas.test",
       serviceId: "atlas-portal",
       workerId: "atlas-portal-worker",
       databaseApplicationPrefix: "atlas-portal",
       artifactPrefix: "atlas-portal",
       repositorySlug: "atlas-portal",
       legalOperatorName: "Atlas LLC",
-      legalOperatorEmail: "operator@atlas.example.com",
+      legalOperatorEmail: "operator@atlas.test",
       legalOperatorAddress: "1 Example Street"
     },
     legalReferences: { factsDocument: "docs/01_PRD.md", status: "REQUIRES_CHECK" },
@@ -65,8 +65,8 @@ function runVerifier(root: string) {
 
 function replaceStarterIdentity(value: string) {
   return value
-    .replaceAll(["https://", "ams", "-start.example"].join(""), "https://atlas.example.com")
-    .replaceAll(["ams", "-start.example"].join(""), "atlas.example.com")
+    .replaceAll(["https://", "ams", "-start.example"].join(""), "https://atlas.test")
+    .replaceAll(["ams", "-start.example"].join(""), "atlas.test")
     .replaceAll(["ams", "microsaas", "starter"].join("-"), "atlas-portal")
     .replaceAll(["ams", "favicon"].join("-"), "atlas-portal-favicon")
     .replaceAll(["AMS", "START"].join("_"), "ATLAS_PORTAL")
@@ -109,7 +109,7 @@ function createCleanRoomDerivedCopy() {
   manifest.legalReferences.status = "REQUIRES_CHECK";
   Object.assign(manifest.identity, {
     brandMark: "AP", brandWordmark: "PORTAL", legalOperatorName: "Atlas LLC",
-    legalOperatorEmail: "operator@atlas.example.com", legalOperatorAddress: "1 Example Street",
+    legalOperatorEmail: "operator@atlas.test", legalOperatorAddress: "1 Example Street",
     legalOperatorInn: "1234567890", legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
   });
   manifest.derivation = {
@@ -174,13 +174,13 @@ describe("copy-source derivation verifier", () => {
   it("validates the materialized Nginx origin and HTTPS port", () => {
     const root = createDerivedFixture();
     const file = "ops/nginx/product.conf";
-    write(root, file, "server {\n  listen 443 ssl;\n  listen [::]:443 ssl;\n  server_name atlas.example.com;\n}\n");
+    write(root, file, "server {\n  listen 443 ssl;\n  listen [::]:443 ssl;\n  server_name atlas.test;\n}\n");
     expect(check(root)).toEqual([]);
-    write(root, file, "server {\n  listen 8443 ssl;\n  server_name another.example.net;\n}\n");
+    write(root, file, "server {\n  listen 8443 ssl;\n  server_name another.test;\n}\n");
     expect(check(root)).toEqual(expect.arrayContaining([`public origin mismatch in ${file}`, `public HTTPS port mismatch in ${file}`]));
     const manifestPath = path.join(root, "starter.identity.json");
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    manifest.identity.publicOrigin = "https://atlas.example.com/unapproved-path";
+    manifest.identity.publicOrigin = "https://atlas.test/unapproved-path";
     writeFileSync(manifestPath, JSON.stringify(manifest));
     expect(check(root)[0]).toContain("identity.publicOrigin");
   });

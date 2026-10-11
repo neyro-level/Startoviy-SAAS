@@ -6,7 +6,16 @@ import { createLegalOperator } from "../src/shared/legal/legal-config.ts";
 const fixture = () => JSON.parse(readFileSync("starter.identity.json", "utf8"));
 
 describe("project identity V2", () => {
-  it.each(["https://safe-123.example.com:8443", "https://[2001:db8::1]:8443"])("accepts a canonical bounded DNS/IPv6 origin %s", (origin) => {
+  it.each(["example.com", "example.net", "example.org", "tenant.example.com", "tenant.example.net", "tenant.example.org"])("rejects documentation-only derived origin %s", (hostname) => {
+    const input = fixture();
+    input.mode = "derived";
+    input.derivation.sourceRevision = "1".repeat(40);
+    input.legalReferences.status = "REQUIRES_CHECK";
+    input.identity.publicOrigin = `https://${hostname}`;
+    expect(() => parseProjectIdentity(input)).toThrow("identity.publicOrigin");
+  });
+
+  it.each(["https://safe-123.test:8443", "https://[2001:db8::1]:8443"])("accepts a canonical bounded DNS/IPv6 origin %s", (origin) => {
     const input = fixture(); input.identity.publicOrigin = origin;
     expect(parseProjectIdentity(input).identity.publicOrigin).toBe(origin);
   });
@@ -20,15 +29,15 @@ describe("project identity V2", () => {
     const input = fixture();
     Object.assign(input.identity, {
       productName: "Atlas Portal", shortName: "Atlas", productSlug: "atlas-portal",
-      publicOrigin: "https://atlas.example.com", serviceId: "atlas-web", workerId: "atlas-worker",
+      publicOrigin: "https://atlas.test", serviceId: "atlas-web", workerId: "atlas-worker",
       databaseApplicationPrefix: "atlas-db", artifactPrefix: "atlas-artifact",
       iconPath: "/atlas-icon.svg", faviconPath: "/atlas-favicon.svg", brandMark: "AP", brandWordmark: "PORTAL",
     });
     input.derivation.migrationOwner = "atlas-portal";
     const config = parseProjectIdentity(input);
-    expect(toPublicProjectIdentity(config)).toMatchObject({ productName: "Atlas Portal", publicOrigin: "https://atlas.example.com", iconPath: "/atlas-icon.svg" });
+    expect(toPublicProjectIdentity(config)).toMatchObject({ productName: "Atlas Portal", publicOrigin: "https://atlas.test", iconPath: "/atlas-icon.svg" });
     expect(config.identity).toMatchObject({ serviceId: "atlas-web", workerId: "atlas-worker", databaseApplicationPrefix: "atlas-db", artifactPrefix: "atlas-artifact" });
-    expect(createLegalOperator(config.identity).site).toBe("https://atlas.example.com");
+    expect(createLegalOperator(config.identity).site).toBe("https://atlas.test");
   });
 
   it.each(["../escape", "Upper-Case", "foo;command", "a b", "-prefix"])("rejects unsafe slug %s", (value) => {
@@ -36,7 +45,7 @@ describe("project identity V2", () => {
     expect(() => parseProjectIdentity(input)).toThrow("identity.productSlug");
   });
 
-  it.each(["not-a-url", "http://example.com", "https://example.com/path", "https://user:credential@example.com", "https://example.com?key=opaque", "https://proxy;.example.com", "https://proxy$&.example.com", "https://-bad.example.com", "https://bad-.example.com", `https://${"a".repeat(64)}.example.com`])("rejects noncanonical or unsafe origin %s", (value) => {
+  it.each(["not-a-url", "http://example.com", "https://example.com/path", "https://user:credential@example.com", "https://example.com?key=opaque", "https://proxy;.test", "https://proxy$&.test", "https://-bad.test", "https://bad-.test", `https://${"a".repeat(64)}.test`])("rejects noncanonical or unsafe origin %s", (value) => {
     const input = fixture(); input.identity.publicOrigin = value;
     expect(() => parseProjectIdentity(input)).toThrow("identity.publicOrigin");
   });
@@ -79,11 +88,11 @@ describe("project identity V2", () => {
   it("rejects a legal placeholder in every derived operator field", () => {
     const input = fixture();
     input.mode = "derived";
-    input.identity.publicOrigin = "https://atlas.example.com";
+    input.identity.publicOrigin = "https://atlas.test";
     input.derivation.sourceRevision = "1".repeat(40);
     input.legalReferences.status = "REQUIRES_CHECK";
     const complete = {
-      legalOperatorName: "Synthetic Operator", legalOperatorEmail: "operator@atlas.example.com",
+      legalOperatorName: "Synthetic Operator", legalOperatorEmail: "operator@atlas.test",
       legalOperatorAddress: "Synthetic Fixture Address", legalOperatorInn: "1234567890",
       legalOperatorOgrn: "1234567890123", legalOperatorPhone: "+10000000000",
     };
