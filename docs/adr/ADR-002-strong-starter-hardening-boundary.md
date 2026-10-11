@@ -1,6 +1,11 @@
 # ADR-002: Strong starter hardening boundary
 
-**Status:** accepted
+**Status:** Accepted architecture boundary; historical delivery premises superseded by ADR-015
+
+The EXPERIMENT/SourceCraft/manual-gate and original no-generator/merge premises
+below describe the earlier program. ADR-015 and the current canon own
+COMMERCIAL/GitHub, derivation and owner-authorized phased protected merge.
+Security and isolation boundaries remain applicable.
 
 ## Context
 
@@ -40,27 +45,12 @@ The following remain outside the starter: a product domain, provider
 integrations, production secrets, a production database or host, and an
 automatic production release.
 
-## Traceability
+## Traceability boundary
 
-The approved master plan is the sole execution source. This ADR freezes the
-architecture boundary for its guarantee matrix:
-
-| Guarantee group | Planned implementation and evidence |
-| --- | --- |
-| Canon, stack exceptions, PII lifecycle | E00 implementation and verification |
-| Test database safety | E00A implementation and verification |
-| Neutral derivation | E01 implementation and verification |
-| Identity and Platform Admin | E02 implementation and verification |
-| Tenant context, RLS and data boundaries | E03 implementation and verification |
-| Commands, audit and idempotency | E04 implementation and verification |
-| Outbox-plus-queue reliability | E05 implementation and verification |
-| Cross-contract PostgreSQL proof | E06 implementation and verification |
-| SourceCraft gates, artifact/runtime, UI safety | E07--E09 implementation and verification |
-| Clean-room derivation and final conformance | E10--E11 implementation and verification |
-
-Each epic is delivered through a separate `PR_ONLY` pull request. A pull request
-does not authorize merge or production; those remain owner actions outside this
-ADR.
+Current lasting guarantees belong to01/03, the detailed security ADRs and
+HANDOVER guarantee-to-proof map. Original task graphs, audit/approval records
+and run verdicts remain in Git/tracker; they are not inherited documentation.
+ADR-015 owns current protected-PR merge authority and no-production boundary.
 
 ## Consequences
 

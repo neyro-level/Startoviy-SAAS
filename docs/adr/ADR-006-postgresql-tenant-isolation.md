@@ -17,7 +17,7 @@ The E03 transaction helper establishes these local settings with `set_config` or
 
 | Setting | Meaning | Required for |
 | --- | --- | --- |
-| `app.principal_kind` | `identity`, `tenant-user`, `platform-admin`, `platform-staff`, `api-client` or `job` | every protected transaction |
+| `app.principal_kind` | `identity`, `tenant-user`, `platform-admin`, `platform-staff`, `api-client`, `job` or explicit `system-job` | every protected transaction |
 | `app.actor_id` | authenticated user, API client or job identity | every protected transaction |
 | `app.organization_id` | selected organization identifier | tenant transaction |
 | `app.correlation_id` | request/job correlation identifier | every protected transaction |
@@ -28,6 +28,29 @@ The helper accepts context only from the server-created `PrincipalContext` or a 
 authenticated user resolves their own memberships before a tenant principal
 exists. Its Member policy is restricted to `app.actor_id`; it cannot read or
 write any other protected tenant table.
+
+## Runtime adoption and safe landing
+
+Every reachable protected-table path adopts its authorized transaction before
+RLS changes can land. A helper alone is insufficient; do not merge broken
+admin/readiness/worker paths for a later epic to repair or weaken default deny.
+Source review and native runtime-role tests must cover all consumers below.
+
+| Runtime surface / source | Server-owned context and invariant |
+| --- | --- |
+| principal-factories.ts / principal-session.ts | identity actor reads only its own membership; no generic tenant bypass |
+| identity-admin repository and queries | explicit platform-admin context for organization/member/audit, mutation uses the shared command transaction |
+| project-registry facade/repositories/tree | admin registry or calling user's scoped principal; state/audit one transaction |
+| notifications service/repository | calling platform principal; NotificationRead userId binds current actor AND visible parent notification, not just parent visibility |
+| platform-admin dashboard / operations runtime | explicit platform authority for aggregates/listing; no unscoped global protected-model access |
+| readiness-runtime / reliability health | explicit operations-readiness system-job, only necessary aggregates/heartbeat |
+| reliability worker / heartbeat / retention | least-privilege system-job for operational outbox/job/heartbeat/retention, not user/session/org/member/project access |
+
+`system-job` is a distinct non-human operations context, not an impersonated
+platform-staff or tenant user. New protected-model callsites require review,
+context/policy coverage and native tests in the same change. No force-RLS
+activation may precede wired runtime adoption. This preserves the lasting
+safe-landing decision from the earlier program without inheriting its graph.
 
 ## RLS Coverage Inventory
 

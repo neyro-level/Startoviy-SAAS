@@ -1,6 +1,6 @@
 # ADR-009: Cross-Contract PostgreSQL Security Evidence
 
-**Status:** implemented and locally verified in E06
+**Status:** Accepted cross-contract evidence contract
 **Scope:** one deterministic PostgreSQL 18 evidence pass above E00A; it does not create a second runner.
 
 ## Decision
@@ -22,7 +22,7 @@ Each test names its contract, uses isolated fixture organizations/identities and
 
 The runner sequence is fixed: preflight → generated client → clean migrate → pg-boss migration → neutral seed → feature suites → guarded cleanup. It runs twice from an empty dedicated `_test` database. The second run must establish the same schema/seed assumptions and pass the same matrix.
 
-After a successful run, a machine-readable, secret-free summary records its schema version, PostgreSQL 18, migration id, first/repeated run, PASS status for E02–E05, executed suites and final PASS. It contains no DSN, host, username, token, payload or PII. Missing coverage is a failed result, not an omitted field. Downstream gates may consume it only with the source local evidence; the starter remains `LOCAL PASS / CI NOT RUN (EXPERIMENT)`.
+After a successful run, a machine-readable, secret-free summary records its schema version, PostgreSQL 18, migration id, first/repeated run, PASS status for E02–E05, executed suites and final PASS. It contains no DSN, host, username, token, payload or PII. Missing coverage is a failed result, not an omitted field. Downstream gates may consume it only with its matching source SHA and actual run evidence. ADR-015 supersedes the original EXPERIMENT/zero-CI premise: the COMMERCIAL template also requires successful exact-head GitHub checks; local proof alone cannot satisfy that gate.
 
 ## Stop Conditions
 
@@ -38,11 +38,11 @@ E06 stops before destructive work if E00A's target guard rejects the database, t
 | reusable proof | secret-free JSON summary emitted only after PASS | summary schema/unit test and inspection |
 | no false ownership | failures route to E02–E05 unless composition is defective | task/ledger evidence with owning contract |
 
-## Local Verification
+## Runner contract and evidence boundary
 
 The guarded PostgreSQL 18 runner starts twice from an empty schema. The first
 pass executes the complete seven-suite matrix; the second executes the same
-suites in reverse order. Both passes cover E02–E05, the declared nine-model RLS
+suites in reverse order. Both passes must cover the declared feature/native RLS
 inventory and worker lifecycle behavior. A failed child command throws through
 the lifecycle boundary so the guarded final database reset still runs.
 

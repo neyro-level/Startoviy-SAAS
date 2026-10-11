@@ -1,36 +1,70 @@
 # Data Model
 
-**Status:** Active extension. `prisma/schema.prisma` and migrations remain the
-runtime source of truth; this file is their neutral model map.
+**Status:** Active extension. [03_ARCHITECTURE.md](03_ARCHITECTURE.md) owns
+cross-cutting contracts; [schema](../prisma/schema.prisma) and
+[migrations](../prisma/migrations/) are the runtime source of truth.
+`VERIFIED` map names existing models; a SQL constraint must be checked in
+migrations as well as Prisma. Planned models are not schema facts.
 
-Prisma schema is the runtime source of truth.
+## VERIFIED identity models
 
-## Neutral Foundation
+| Model | Relations / relevant fields | Boundary |
+| --- | --- | --- |
+| User | sessions/accounts/members/twoFactors/setupTokens/recoveryTokens/notificationReads; systemRole, disabledAt, setupCompletedAt | server-owned identity, fresh principal rereads status |
+| Session | User; token unique, expiresAt, activeOrganizationId, twoFactorVerifiedAt, setupCompletedAt, legacy activeTeamId | persisted authority, selection field is not automatic permission proof |
+| Account | User; credential/provider data, password, token candidates | auth-only; issuer/accountId compound uniqueness |
+| Verification | identifier/value/expiresAt | Better Auth verification material, never public DTO |
+| TwoFactor | User; secret/backupCodes/verified/failedVerificationCount/lockedUntil | sensitive MFA material; fields alone do not prove every plugin path |
+| RateLimit | unique key/count/lastRequest | database auth throttling |
+| AccountSetupToken | User; unique tokenHash, expiry/consumedAt/revokedAt | one-time setup; no raw token stored |
+| PlatformRecoveryToken | User; unique tokenHash, expiry/consumedAt/revokedAt | recovery, session revocation and MFA reenrollment |
 
-- `User`, `Session`, `Account`, `Verification` — identity and Better Auth tables;
-- `Organization` — tenant boundary;
-- `Member` — user access to organization with `ORG_OWNER`, `ORG_MEMBER`, `VIEWER`;
-- `Project` — neutral starter entity inside organization;
-- `Notification`, `NotificationRead` — user-facing events;
-- `AuditEvent` — durable audit trail;
-- `IdempotencyKey` — repeat-safe commands;
-- `OutboxEvent` — durable async events;
-- `JobRun` — job execution records;
-- `RuntimeHeartbeat` — worker liveness;
-- `RetentionRun` — retention evidence.
+## VERIFIED tenant and operation models
 
-## Enums
+| Model | Relations / relevant constraints | Boundary |
+| --- | --- | --- |
+| Organization | members/projects/audit/idempotency/outbox/jobRuns/notifications; slug unique, version | tenant boundary |
+| Member | User + Organization; unique organizationId/userId; tenantRole, version | organization membership, no project grant implied |
+| Project | Organization; unique organizationId/slug and organizationId/id; status, version | neutral registry; project-level capabilities still TARGET |
+| Notification | optional Organization/Project; unique dedupKey; visibility/category/severity | current presentation is platform-team/admin-only; composite tenant relation invariants include SQL migrations |
+| NotificationRead | Notification + User; compound primary key notificationId/userId | per-user read state |
+| AuditEvent | optional Organization; actor/action/entity/markers/correlation | minimal durable audit, markers must omit unnecessary PII/secrets |
+| IdempotencyKey | optional Organization/OutboxEvent; unique scope/organizationScope/key, requestHash/status/response/expiry | same key with changed request conflicts; response must be safe |
+| OutboxEvent | optional Organization; optional idempotencyKey, jobRuns; topic/version/payload/status/attempts/lease/correlation | durable post-commit delivery |
+| JobRun | OutboxEvent + optional Organization; unique outboxEventId/attempt; worker/status/safeErrorCode | leased delivery attempts |
+| RuntimeHeartbeat | unique runtime/workerId; heartbeat timestamps | infrastructure liveness, not tenant-owned business data |
+| RetentionRun | status/counts/safeErrorCode/timestamps | maintenance evidence, not generic legal-retention policy |
 
-- system roles: `PLATFORM_ADMIN`, `STAFF`, `MEMBER`;
-- project status: `ACTIVE`, `PLANNED`, `DISABLED`;
-- notification categories: `SYSTEM`, `PROJECT`, `ACCESS`, `QUEUE`.
+## VERIFIED enums and RLS inventory
 
-## Migration Policy
+SystemRole: PLATFORM_ADMIN/STAFF/MEMBER. MembershipRole:
+ORG_OWNER/ORG_MEMBER/VIEWER. ProjectStatus: ACTIVE/PLANNED/DISABLED.
+AuditActorType: USER/SYSTEM. IdempotencyStatus: PROCESSING/COMPLETED/FAILED.
+OutboxStatus: PENDING/PROCESSING/PROCESSED/DEAD_LETTER.
+JobRunStatus and RetentionRunStatus: RUNNING/SUCCESS/FAILED.
+NotificationCategory: SYSTEM/PROJECT/ACCESS/QUEUE; NotificationSeverity:
+INFO/SUCCESS/WARNING/ERROR; NotificationVisibility:
+PLATFORM_TEAM/PLATFORM_ADMIN_ONLY. No new project/billing/provider enum is inferred.
 
-The neutral initial migration is followed by forward hardening migrations while
-this starter has no production database. A derived production product must stop
-squashing applied migrations.
+`tenant-owned-models.ts` currently declares exactly Organization, Member,
+Project, Notification, NotificationRead, AuditEvent, IdempotencyKey, OutboxEvent
+and JobRun. Migrations enable and force RLS on this inventory; authorized
+transaction sets local principal/actor/org/correlation context. SQL policy
+includes explicit platform and infrastructure contexts, not a fake tenant.
+Runtime identities are configured non-owner NOBYPASSRLS; web/worker do not
+receive migrator authority. [ADR-006](adr/ADR-006-postgresql-tenant-isolation.md)
+owns the role/policy/composite-constraint contract. `verify:rls-coverage` and
+native tenant-isolation tests prove declared tenant coverage on their SHA;
+they cannot prove future within-org project isolation.
 
-## Tenant Isolation Transition
+## TARGET additions and migration policy
 
-E03 treats `Organization`, `Member`, `Project`, tenant-scoped notifications, audit, idempotency and async records as an explicit PostgreSQL RLS coverage inventory. A model with tenant data is incomplete until it has a coverage entry, policy and isolation test. The definitive transaction-context, role and composite-key contract is [`ADR-006`](adr/ADR-006-postgresql-tenant-isolation.md).
+Neutral project grants/capabilities, project-owned storage/outbound/worker
+records and any project DB context require additive Starter-owned migrations,
+policy/coverage and cross-project negative tests. No donor domain migration
+or role taxonomy is copied. A disabled optional module remains neutral.
+Starter has no production database; existing forward migration IDs and security
+meaning are preserved. A derived production product never squashes an applied
+migration; it owns baseline, runtime roles, secrets and recovery evidence.
+[AUTH](AUTH.md) owns identity lifecycle; [SECURITY](SECURITY.md) owns trust/PII;
+this map does not assert complete UI or completed new capability tests.

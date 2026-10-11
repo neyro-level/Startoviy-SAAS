@@ -5,9 +5,10 @@
 ## Decision
 
 `АМС Старт` remains a copy-source starter. A derived repository receives its
-identity through one project-owned manifest and a deterministic checklist; the
-starter does not introduce a generator, registry or template distribution
-service.
+identity through one project-owned manifest and a deterministic interface.
+The baseline implements copy-source plus verifier/smoke. The approved current
+program adds a deterministic neutral generator as TARGET under ADR-015; it
+does not introduce a template distribution service or inherited task history.
 
 E01 implementation must create one readable identity contract and one
 fail-closed verifier. They are the only authoritative inventory of values that
@@ -53,5 +54,7 @@ epic.
   manual search across application, runtime and operations files.
 - `ams-start` is a deliberate source identity, never a hidden production
   dependency inherited by a derived project.
-- A generator remains out of scope until evidence from at least two real
-  derived products justifies one.
+- The original deferred-generator premise is superseded by the approved current
+  program/ADR-015. The generator must preserve this manifest/fail-closed proof,
+  omit execution inputs and require no manual history cleanup; until implemented
+  and independently tested, existing copy-source smoke is not generator proof.

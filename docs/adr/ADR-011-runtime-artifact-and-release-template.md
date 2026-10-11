@@ -1,15 +1,15 @@
 # ADR-011: Hardened Runtime, Artifact And Release Template
 
-**Status:** accepted and locally verified for E08
+**Status:** Accepted artifact contract; actual image proof required for current SHA
 **Scope:** reusable local template only; no registry publish, server mutation, DNS or production credential.
 
 ## Decision
 
 A reviewed derived-project SHA produces separate immutable build, runtime-dependency, non-root runtime and migrator artifacts from a digest-pinned Node base. The final runtime excludes package managers, dev tooling, tests, build cache and unnecessary source; writable paths are explicit and bounded.
 
-`web`, `worker`, `migrator` and `backup` have separate environment/permission contracts. Only migrator has controlled migration capability; web/worker are E03 non-owner runtime identities. A release record binds reviewed SHA, image digest and an explicit previous rollback digest. Production remains a derived-product action, never a starter action.
+`web`, `worker`, `migrator` and `backup` have separate environment/permission contracts. Only migrator has controlled migration capability; web/worker are non-owner runtime identities. A release record binds reviewed SHA, image digest and an explicit previous rollback digest. Production remains a derived-product action, never a starter action.
 
-## Template Evidence
+## Required template evidence
 
 | Guarantee | Local template proof |
 | --- | --- |
@@ -23,9 +23,7 @@ A reviewed derived-project SHA produces separate immutable build, runtime-depend
 
 Container vulnerability inspection uses Docker Scout against local image IDs and writes SARIF only to ignored `.local/evidence`; it never publishes an image. The contract stops if artifact proof needs a registry, server or production credentials. E08 remains `RISKY`, PR-only, and a derived product must complete its own release and rollback runbook before use.
 
-The 2026-09-25 local inspection found the same 11 high/critical findings in
-three Debian base packages across all three images; Scout reported no fixed
-version for any of them. Two additional findings with available Debian fixes
-were removed by the runtime security upgrade. This is recorded residual base
-image risk, not release attestation: every derived product must rebuild and
-re-run the image policy at its own exact release SHA.
+Historical image scan verdicts remain in Git/tracker. Every current candidate
+requires fresh inspection and an explicit bounded-risk decision if unresolved
+findings remain; no historical verdict grants release authority. ADR-015 owns
+the current protected merge procedure.

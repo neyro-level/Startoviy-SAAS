@@ -65,7 +65,7 @@ export function verifyFinalConformance({ root = process.cwd(), requireClean = tr
     throw new Error("test:e2e:run must use the guarded local database lifecycle.");
   }
 
-  requireText(root, "docs/README.md", ["`HANDOVER.md`"]);
+  requireText(root, "docs/README.md", ["[HANDOVER.md](HANDOVER.md)"]);
   requireText(root, "docs/HANDOVER.md", [
     "## Guarantee-to-proof matrix",
     "## Verify command matrix",

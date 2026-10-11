@@ -30,12 +30,16 @@ Read the narrowest applicable source before changing code or documentation.
 
 ## Delivery
 
-The current repository is a private `template` with profile `COMMERCIAL`
-and GitHub primary; ADR-015 owns the accepted delivery decision.
-Its hardening program is `PR_ONLY`:
-commit and push checkpoints are allowed, while merge and production require a
-separate owner command. A derived product must establish its own delivery
-profile and production contract.
+The repository is a `template` with profile `COMMERCIAL` and GitHub primary;
+ADR-015 owns delivery policy. Its final visibility is private. The owner
+temporarily authorized public visibility during development to unblock CI;
+restore private only after the entire approved program is verified.
+The owner authorizes phased autonomous merges for the approved program:
+review each bounded epic, require successful GitHub checks on its exact head,
+merge through the protected PR, and verify canonical main before downstream
+work. Do not ask for merge permission again. No direct main push, force push
+or gate bypass. Production requires separate authorization. A derived product
+must establish its own delivery profile, permissions and production contract.
 
 ## Checks
 

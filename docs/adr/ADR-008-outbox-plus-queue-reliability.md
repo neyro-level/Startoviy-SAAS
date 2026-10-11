@@ -1,6 +1,6 @@
 # ADR-008: Outbox-Plus-Queue Reliability Contract
 
-**Status:** implemented and locally verified in E05
+**Status:** Accepted reliability contract; current verification requires exact-SHA proof
 **Scope:** neutral `outbox-plus-queue` foundation; no product provider or schedule is added.
 
 ## Decision
@@ -73,12 +73,10 @@ payloads, secrets and provider responses stay out of public errors and audit
 markers. E05 implementation is `RISKY` and waits for merged E03/E04 database
 and command work before its shared runtime wiring.
 
-## Local Verification
+## Verification sources
 
-E05 proof covers atomic competing claims, stale-lease fencing (including a
-reused worker identity), transactional takeover rollback, idempotency conflict,
-bounded retry and one dead-letter notification, heartbeat/readiness, runtime
-DDL denial, retention, and graceful worker shutdown. The evidence is executable
-in `tests/integration/outbox-reliability.integration.test.ts` and
-`tests/outbox-worker.test.ts`; production and paid SourceCraft CI are outside
-this `PR_ONLY` epic.
+Native outbox-reliability and outbox-worker tests must prove atomic claims,
+stale-lease/attempt/time fencing, transactional takeover rollback, conflict,
+retry/dead-letter, heartbeat/readiness, runtime DDL denial, retention and
+bounded shutdown. Their mere presence is not a current PASS. ADR-015 owns
+current phased merge; production is separately authorized.

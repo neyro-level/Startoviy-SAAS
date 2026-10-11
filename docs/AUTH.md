@@ -1,48 +1,87 @@
 # Auth
 
-**Status:** Active extension. `03_ARCHITECTURE.md` owns the platform profile and
-cross-cutting policy; this file owns the detailed starter auth contract.
+**Status:** Active extension. [03_ARCHITECTURE.md](03_ARCHITECTURE.md) owns
+profile/boundaries; this file owns identity/session/MFA implementation detail.
+`VERIFIED` denotes current source; current test verdicts require matching SHA.
 
-Better Auth owns identity, password and session lifecycle.
+## VERIFIED framework and login
 
-## Login
+Better Auth is the sole identity/password/session framework. `auth.ts` uses
+Prisma adapter, username and twoFactor plugins, exact configured base origin,
+email/password enabled and public signup disabled. Auth is unavailable when
+required auth/database configuration is absent; API returns safe503.
+Public LoginDialog submits username/password and redirects to dashboard;
+invalid login uses a generic error without account enumeration. Full TOTP,
+setup and recovery interaction in this dialog is still TARGET.
 
-Public login modal redirects successful users to `/dashboard/`. Public signup is disabled.
+`security-config.ts` configures PostgreSQL-backed rate limits: baseline100
+requests/60s, sign-in username/email5/60s. Production requires explicit trusted
+proxy CIDRs; without them startup rejects forwarded-IP trust. Local mode with
+no trusted proxy does not trust x-forwarded-for. Rate-limit rules for other
+sensitive setup/TOTP/recovery endpoints and distributed adversarial evidence
+remain REQUIRES CHECK; do not infer them from the login rule.
 
-## Roles
+## VERIFIED persisted session and authority
 
-- `PLATFORM_ADMIN` → platform owner;
-- `STAFF` → platform staff/read operations;
-- `MEMBER` → tenant user, requires organization membership.
+`principal-session.ts` disables cookie-cache, then reloads persisted session
+user/expiry/activeOrganizationId/twoFactorVerifiedAt. Missing, mismatched,
+expired or revoked session is denied; user state/membership is read afresh.
+`principal-factories.ts` denies disabled user and outstanding live setup token.
+Platform Admin requires persisted session MFA proof, stamped by the TOTP
+verification path; twoFactorEnabled alone grants no authority. Current check
+is timestamp presence, not a separate recent-MFA TTL. Stronger freshness,
+backup-code behavior and full successful browser flow require explicit proof.
 
-## Provisioning
+| Current role | Principal / boundary |
+| --- | --- |
+| PLATFORM_ADMIN | platform-admin; authority requires MFA; admin mutation/query authorization checks kind |
+| STAFF | platform-staff; current permissions include project read-any and operations read-any, not platform management |
+| MEMBER | tenant-user; valid membership, ORG_OWNER/ORG_MEMBER/VIEWER; permissions/resource checks still required |
 
-E02 replaces the reusable bootstrap-password path with a one-time setup flow.
-Until E02 implementation is delivered, the commands below are transitional
-starter tooling only and must not be treated as a production provisioning
-contract.
+One membership may resolve directly; multiple require explicit active organization,
+never the first membership. `setCurrentActiveOrganization` validates persisted
+session and membership before update; organization switcher UI is TARGET.
+Roles/permission strings are preserved from principal.ts until additive accepted
+change. Project-grant permissions are TARGET, not implied by organization role.
 
-The target flow is:
+## VERIFIED setup/recovery backend; TARGET complete flow
 
-```text
-operator creates identity
-→ one-time hashed setup token
-→ user sets password
-→ token is consumed and siblings are revoked
-→ business principal becomes available
-```
+`identity-admin-commands.ts` creates a locked random credential and a one-time
+setup token, stores only SHA256 hash with24h expiry, revokes live siblings.
+`completeAccountSetup` server service validates token/password12…128, hashes
+password with Better Auth and atomically consumes an unexpired/unrevoked token,
+updates credential/setupCompletedAt, revokes siblings and all sessions. Replay
+returns null; clear token is server-issued capability, never audit/log content.
+The create command returns setupToken to its caller; safe delivery and ensuring
+it is not exposed by a browser action/log need hardening verification.
 
-Platform Admin additionally requires verified TOTP for every authority-bearing
-session. A user with several memberships must explicitly select an active
-organization; selecting the first membership is forbidden.
+Recovery issuance requires existing Platform Admin authority, a non-disabled
+Platform Admin target, hashed one-time token and1h expiry. Completion replaces
+password, deletes old TwoFactor data, clears enabled flag, revokes sibling
+recovery tokens and sessions. It does not manufacture MFA proof: the recovered
+administrator must enroll/verify TOTP again. Completion services are exported
+by identity server facade; recovery issuance exists in internal runtime but
+is not yet exported there. No complete public setup/recovery screen/API is
+shipped. A service function is not a usable end-to-end recovery product.
 
-The current commands remain subject to the E02 transition contract:
+## Legacy operational tooling
 
-```bash
-pnpm user:create -- --username <name> --name "<display name>" --system-role MEMBER
-pnpm user:set-system-role -- --username <name> --system-role STAFF
-pnpm user:add-to-organization -- --username <name> --organization ams-start --tenant-role VIEWER
-```
+`scripts/auth-admin.ts` create/reset still accepts exactly8 printable password
+characters through stdin and rejects --password argv; it is a transitional
+operator path, not the12…128 setup contract. Admin reset likewise uses the
+old fixed8 schema. These paths must be reconciled in identity hardening before
+trusted provisioning; CLI existence does not prove setup cannot be bypassed.
+Use no real password/token in commands, documentation, logs or Git.
+Bootstrap may only target a separately owned local/test environment; derived
+production provisioning/recovery follows its reviewed operational contract.
 
-Any temporary password is a migration fallback only, must be passed through
-stdin, and cannot bypass completion of one-time setup.
+## Verification map
+
+[ADR-005](adr/ADR-005-identity-platform-admin-hardening.md) owns durable identity
+invariants. Existing `account-setup.integration.test.ts` and
+`principal-runtime-adoption.integration.test.ts` cover setup/recovery/session
+and authority denies; `auth-security-config.test.ts` covers limits/proxy guards;
+principal tests cover role/scope rules. Browser shell suite proves invalid-login
+throttling, not successful TOTP/recovery. TARGET proof includes one-time token
+expiry/replay/atomicity, disabled/revoked user on next request, fresh org/project
+permissions, success and failures for full setup/TOTP/recovery, and safe delivery.
