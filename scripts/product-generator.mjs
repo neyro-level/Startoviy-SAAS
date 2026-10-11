@@ -168,12 +168,13 @@ function prepare({ sourceRoot, sourceSha, targetRoot, input }) {
     const split = record.indexOf("\t"); const [mode, type, oid] = record.slice(0, split).split(" ");
     return { mode, type, oid, file: record.slice(split + 1) };
   });
-  assertNoInheritedExecutionArtifacts(entries.map((entry) => entry.file));
   for (const entry of entries) {
-    if (!/^100(?:644|755)$/.test(entry.mode) || entry.type !== "blob") throw new Error(`Unsupported symlink/submodule mode: ${entry.file}`);
-    if (trackedSecret(entry.file)) throw new Error(`Tracked private/local material is forbidden: ${entry.file}`);
+    if (scanText(entry.file).length) throw new Error("Source filename contains a credential pattern");
     if (entry.file.startsWith("/") || entry.file.split("/").includes("..") || /[\\\u0000-\u001f<>:"|?*]/u.test(entry.file)) throw new Error("Unsafe source path");
+    if (!/^100(?:644|755)$/.test(entry.mode) || entry.type !== "blob") throw new Error(`Unsupported symlink/submodule mode: ${entry.file}`);
+    if (trackedSecret(entry.file)) throw new Error("Tracked private/local material is forbidden");
   }
+  assertNoInheritedExecutionArtifacts(entries.map((entry) => entry.file));
   for (const file of ["starter.identity.json", "package.json", "pnpm-lock.yaml", ".node-version", "AGENTS.md", "docs/README.md", "docs/01_PRD.md", "docs/02_PRODUCT_STRUCTURE.md", "docs/03_ARCHITECTURE.md", "docs/05_RELEASE_CHECKLIST.md", "docs/06_DESIGN_SYSTEM.md", "src/app/layout.tsx", ".github/workflows/ci.yml", ...reserved]) {
     if (!entries.some((entry) => entry.file === file)) throw new Error(`Source template contract is missing: ${file}`);
   }

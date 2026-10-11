@@ -47,11 +47,11 @@ function ownRehearsal(sourceRoot, sha, target, identity) {
     const split = record.indexOf("\t"); const [mode, type, oid] = record.slice(0, split).split(" ");
     return { mode, type, oid, file: record.slice(split + 1) };
   });
-  assertNoInheritedExecutionArtifacts(entries.map((entry) => entry.file));
   for (const entry of entries) {
     if (!/^100(?:644|755)$/.test(entry.mode) || entry.type !== "blob") throw new Error("Rehearsal forbids symlinks/submodules");
     if (entry.file.startsWith("/") || entry.file.split("/").some((part) => part === ".." || /^(?:\.git|\.aws|\.ssh|\.codex|\.agents|node_modules|\.next|\.runtime|credentials|id_rsa|id_ed25519)$/i.test(part) || (part.startsWith(".env") && part !== ".env.example") || /\.(?:pem|key|p12|pfx)$/i.test(part)) || /[\\\u0000-\u001f<>:"|?*]/u.test(entry.file) || scanText(entry.file).length) throw new Error("Rehearsal forbids private/local paths");
   }
+  assertNoInheritedExecutionArtifacts(entries.map((entry) => entry.file));
   const blobs = readBlobs(sourceRoot, entries);
   for (const bytes of blobs.values()) if (scanText(bytes.toString("utf8")).length) throw new Error("Rehearsal source contains a credential pattern");
   mkdirSync(target);

@@ -65,6 +65,21 @@ function input(root: string, slug: string, profile = "COMMERCIAL") {
 afterEach(() => temporary.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe("nonpublishing product generator", () => {
+  it.each(["private", "execution", "symlink"])("never discloses a credential-bearing %s source filename", (kind) => {
+    const source = sourceFixture(); const config = input(source.root, "private-proof");
+    const token = ["gh", "p_", "F".repeat(36)].join("");
+    const file = kind === "private" ? `.env.${token}` : kind === "execution" ? `backlog/${token}.md` : `link-${token}`;
+    if (kind === "symlink") symlinkSync("README.md", path.join(source.root, file));
+    else writeFileSync(path.join(source.root, file), "synthetic private filename fixture\n");
+    git(source.root, "add", "--force", file);
+    git(source.root, "-c", "core.hooksPath=", "-c", "commit.gpgSign=false", "-c", "user.name=Generator Fixture", "-c", "user.email=fixture@localhost", "commit", "--quiet", "-m", "Add synthetic private filename fixture");
+    let message = "";
+    try { planProduct({ sourceRoot: source.root, sourceSha: git(source.root, "rev-parse", "HEAD"), targetRoot: path.join(source.parent, "product"), input: config }); }
+    catch (error) { message = (error as Error).message; }
+    expect(message.includes(token)).toBe(false);
+    expect(message).toBe("Source filename contains a credential pattern");
+    expect(existsSync(path.join(source.parent, "product"))).toBe(false);
+  });
   it("creates two independent identities, keeps source unchanged and refuses overwriting", () => {
     const source = sourceFixture();
     const original = { head: git(source.root, "rev-parse", "HEAD"), tree: git(source.root, "rev-parse", "HEAD^{tree}"), remote: git(source.root, "remote", "get-url", "origin") };
