@@ -59,8 +59,8 @@ pnpm derive:smoke --native required --browser required --evidence /outside/sourc
 
 По умолчанию выполняются два прогона. Starter запускает настоящий generator
 из чистого текущего SHA; производный продукт репетирует собственный immutable
-source без замены identity, migrationOwner или profile. В каждом прогоне:
-повторный dry-run, сравнение постоянных файлов, negative restored identity,
+source без замены identity, migrationOwner или profile. Starter дважды проверяет
+dry-run перед apply. В каждом прогоне: сравнение постоянных файлов, negative restored identity,
 frozen offline install, Prisma generate/validate, docs/quick/unit, web/worker
 build, проверки HTTP и выбранных модулей. Установленные PostgreSQL18 и Chromium
 добавляют native integration и браузерный путь. Активный outbox проверяется
