@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const safeName = z.string().trim().min(1).max(100).refine((value) => !/[\u0000-\u001f\u007f]/u.test(value));
 const slug = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/).max(40);
-const asset = z.string().regex(/^\/[a-z0-9][a-z0-9/-]*\.(?:svg|png|ico)$/).refine((value) => !value.includes("//"));
+// Generator materializes SVG bytes and metadata declares image/svg+xml.
+const asset = z.string().regex(/^\/[a-z0-9][a-z0-9/-]*\.svg$/).refine((value) => !value.includes("//"));
 const moduleState = z.enum(["enabled", "disabled", "not_applicable"]);
 const legalPlaceholder = new RegExp(["TO", "DO:", "|UNDECIDED"].join(""), "i");
 const sourcePaths = z.array(z.string().regex(/^[a-zA-Z0-9._/-]+$/).refine((value) =>

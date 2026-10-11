@@ -6,6 +6,12 @@ import { createLegalOperator } from "../src/shared/legal/legal-config.ts";
 const fixture = () => JSON.parse(readFileSync("starter.identity.json", "utf8"));
 
 describe("project identity V2", () => {
+  it.each(["png", "ico"])("rejects mislabeled SVG assets with a %s extension", (extension) => {
+    for (const field of ["iconPath", "faviconPath"] as const) {
+      const input = fixture(); input.identity[field] = `/own-icon.${extension}`;
+      expect(() => parseProjectIdentity(input)).toThrow(`identity.${field}`);
+    }
+  });
   it("provides one validated identity to public surfaces and server runtime names", () => {
     const input = fixture();
     Object.assign(input.identity, {

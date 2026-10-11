@@ -1,4 +1,5 @@
-import { publicProjectIdentity } from "../../platform/config/project-identity.ts";
+import { optionalModules, publicProjectIdentity } from "../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../platform/config/optional-modules.ts";
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
         title={publicProjectIdentity.productName}
         description="Нейтральная рабочая область для будущих кабинетов, CRM, аналитики и внутренних процессов."
         actions={
-          hasPermission(state.principal, "platform:manage") ? (
+          isModuleEnabled(optionalModules, "platformAdmin") && hasPermission(state.principal, "platform:manage") ? (
             <Link
               href="/admin/organizations/"
               className="rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-app-primary-foreground"

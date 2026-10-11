@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { OptionalModules } from "../src/platform/config/optional-modules.ts";
 import { isModuleEnabled, requireOptionalModule } from "../src/platform/config/optional-modules.ts";
 
@@ -19,10 +20,16 @@ vi.mock("../src/platform/actions/define-action.ts", () => ({
   // Session validation is the independently verified shared action boundary.
   defineAction: (definition: { execute: (context: unknown) => unknown }) => definition.execute,
 }));
+vi.mock("../src/modules/identity-access/server.ts", () => ({
+  getCurrentCabinetRedirect: async () => null,
+  getCurrentPrincipalState: async () => ({ principal: { kind: "platform-admin", userId: "ui-admin", correlationId: "ui-test" } }),
+}));
+vi.mock("../src/modules/project-registry/server.ts", () => ({ listProjectTreesForUser: async () => [] }));
 
 import { GET as manifestResponse } from "../src/app/manifest.webmanifest/route.ts";
 import OfflinePage from "../src/app/offline/page.tsx";
 import AdminPage from "../src/app/admin/page.tsx";
+import DashboardPage from "../src/app/dashboard/page.tsx";
 import { GET as getServiceWorker } from "../src/app/sw.js/route.ts";
 import { platformAdminAction } from "../src/app/admin/_actions/platform-admin-action.ts";
 import { getPgBoss } from "../src/modules/platform-operations/infrastructure/pg-boss-client.ts";
@@ -35,6 +42,12 @@ beforeEach(() => {
 });
 
 describe("optional capability boundaries", () => {
+  it.each(["enabled", "disabled", "not_applicable"] as const)("renders the dashboard admin action only with an enabled module (%s)", async (state) => {
+    mocks.modules.platformAdmin = state;
+    const html = renderToStaticMarkup(await DashboardPage());
+    expect(html.includes("Администрирование")).toBe(state === "enabled");
+    expect(/href="\/admin\/organizations\/?"/u.test(html)).toBe(state === "enabled");
+  });
   it.each(["outboxPlusQueue", "pwa", "platformAdmin", "outboundHttp", "objectStorage"] as const)("requires explicit own enablement for %s", (name) => {
     expect(isModuleEnabled({ [name]: "enabled" }, name)).toBe(true);
     for (const state of ["disabled", "not_applicable", "unknown", undefined]) {

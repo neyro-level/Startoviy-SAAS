@@ -14,6 +14,8 @@ Use `pnpm derive:create` from a clean template checkout on the selected full
 commit SHA. The input JSON follows ProjectIdentityV2: own product name/slug,
 HTTPS origin, icons/brand labels, service/worker/database/artifact IDs, legal
 inputs, GitHub origin, profile COMMERCIAL or CRITICAL and explicit module flags.
+Icon/favicon paths must end in `.svg`: the generator renames existing SVG
+assets and the runtime declares SVG MIME; it does not convert PNG/ICO bytes.
 `mode` becomes derived; null `sourceRevision` is filled from `--source-sha`,
 an explicitly different revision is rejected. Actual legal provenance stays
 REQUIRES_CHECK; fixtures never establish release authority. Do not put secrets

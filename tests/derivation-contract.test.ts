@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createDisposableCopy } from "../scripts/verify-clean-room-derivation.mjs";
-import { donorMarkers, historicalReference, sourceMarkers, verifyDerivation } from "../scripts/verify-derivation.mjs";
+import { donorMarkers, historicalReference, sourceMarkers, symlinkParent, verifyDerivation } from "../scripts/verify-derivation.mjs";
 
 const verifier = path.resolve("scripts/verify-derivation.mjs");
 const repositoryRoot = path.resolve(".");
@@ -221,7 +221,7 @@ describe("copy-source derivation verifier", () => {
     expect(check(root)).toEqual(["Identity manifest must be a regular source file"]);
   });
 
-  it.runIf(process.platform !== "win32")("refuses a symlink parent for an indexed file or selected manifest", () => {
+  it("refuses a junction parent for Git and native path separators before reading outside contents", () => {
     const root = createDerivedFixture();
     const outside = mkdtempSync(path.join(tmpdir(), "ams-parent-boundary-")); temporaryRoots.push(outside);
     write(root, "public/asset.txt", "fixture");
@@ -231,7 +231,9 @@ describe("copy-source derivation verifier", () => {
     write(outside, "asset.txt", sourceMarkers[0]);
     write(outside, "identity.json", "private invalid input, must never be parsed");
     rmSync(path.join(root, "public"), { recursive: true });
-    symlinkSync(outside, path.join(root, "public"));
+    symlinkSync(outside, path.join(root, "public"), "junction");
+    expect(symlinkParent(root, "public/asset.txt")).toBe(true);
+    expect(symlinkParent(root, "public\\asset.txt")).toBe(true);
     expect(check(root)).toEqual(["symlink parent in public/asset.txt", "symlink parent in public/identity.json", "unsupported source mode in public"]);
     expect(verifyDerivation({ root, manifestPath: path.join(root, "public/identity.json") })).toEqual(["Identity manifest must be a regular source file"]);
   });

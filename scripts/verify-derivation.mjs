@@ -26,7 +26,8 @@ const credentialPath = (file) => file.split("/").some((part) => privateDirectory
   || /^(?:credentials|id_rsa|id_ed25519)$|\.(?:pem|key|p12|pfx)$/i.test(part));
 const markersIn = (value, markers) => markers.some((marker) => value.toLocaleLowerCase("en-US").includes(marker.toLocaleLowerCase("en-US")));
 const safePath = (file) => scanText(file).length ? "<redacted path>" : /[\u0000-\u001f]/u.test(file) ? JSON.stringify(file) : file;
-const symlinkParent = (root, file) => file.split(path.sep).slice(0, -1)
+// Git paths use '/', native Windows paths use '\\'; inspect both forms.
+export const symlinkParent = (root, file) => file.split(/[\\/]/u).slice(0, -1)
   .some((_part, index, parts) => lstatSync(path.join(root, ...parts.slice(0, index + 1))).isSymbolicLink());
 
 function localFiles(root, relativeRoot = "") {
