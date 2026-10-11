@@ -5,6 +5,10 @@ out
 .local
 .release-artifacts
 graphify-out
+backlog
+.beads
+.ams-task-manager
+MASTER_PLAN*.md
 node_modules
 test-results
 playwright-report

@@ -14,6 +14,12 @@
 /src/generated/prisma
 /graphify-out
 
+# Local task execution and supplied planning inputs are not template content
+/backlog/
+/.beads/
+/.ams-task-manager/
+/MASTER_PLAN*.md
+
 
 # tests
 /coverage

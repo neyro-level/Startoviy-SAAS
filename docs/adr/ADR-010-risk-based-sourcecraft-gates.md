@@ -1,9 +1,12 @@
 # ADR-010: Risk-Based SourceCraft Gate Template
 
-**Status:** accepted for E07 implementation  
+**Status:** historical; superseded for active delivery by [ADR-015](ADR-015-commercial-template-github-delivery.md)
 **Scope:** dormant copy-source template; the starter itself never runs paid SourceCraft CI.
 
 ## Decision
+
+The following is the original SourceCraft template decision. It does not
+authorize current delivery or override the owner's COMMERCIAL/GitHub contract.
 
 The starter preserves zero CI on branch push and Pull Request. Its own status is
 only `LOCAL PASS / CI NOT RUN (EXPERIMENT)`. A derived `COMMERCIAL` or

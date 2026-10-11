@@ -1,16 +1,19 @@
+# Reviewed install scripts, bound to the exact locked package versions.
 allowBuilds:
-  '@prisma/engines': true
-  esbuild: true
-  prisma: true
-  sharp: true
-  unrs-resolver: true
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+  '@prisma/engines@7.10.0': true
+  esbuild@0.28.2: true
+  prisma@7.10.0: true
+  sharp@0.35.5: true
+  sharp@0.35.4: false
+  unrs-resolver@1.12.2: true
 minimumReleaseAgeExclude:
   - zod@4.5.4
   - tsx@4.23.13
   - pg-boss@12.30.0
+# Preserve prior audited pins and add the newly required security patches.
 overrides:
   deepmerge-ts: 8.0.0
   mysql2: 3.24.3
+  fast-uri: 3.1.8
+  source-map-js: 1.2.2
+  sharp: 0.35.5

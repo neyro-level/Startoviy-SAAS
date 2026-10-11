@@ -19,7 +19,7 @@
    в личную черновую ветку.
 5. Создайте собственные secrets только через approved Secret Master project;
    не переносите `.env.local`, database URLs, tokens или credentials.
-6. Настройте product-specific PostgreSQL roles/topology и manual exact-head
+6. Настройте product-specific PostgreSQL roles/topology и exact-head GitHub
    delivery gate согласно выбранному `DELIVERY_PROFILE`.
 7. Запустите `pnpm derive:verify`. Он не пропустит starter slug, example
    origin или legal placeholder в tracked text file либо имени файла.
@@ -38,7 +38,7 @@
 - migration baseline: новая копия владеет перенесёнными migrations и заменяет
   starter database roles/application names до первого применения;
 - delivery: новый продукт выбирает собственный профиль и не наследует
-  экспериментальный статус starter автоматически.
+  готовность или release authority starter автоматически.
 
 ## Что проверяет verifier
 
