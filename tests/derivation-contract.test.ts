@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createDisposableCopy } from "../scripts/verify-clean-room-derivation.mjs";
 
 const verifier = path.resolve("scripts/verify-derivation.mjs");
 const repositoryRoot = path.resolve(".");
@@ -107,6 +108,24 @@ afterEach(() => {
 });
 
 describe("copy-source derivation verifier", () => {
+  it("rejects force-tracked ignored execution artifacts before writing a copied tree", () => {
+    const source = createDerivedFixture();
+    const destination = mkdtempSync(path.join(tmpdir(), "ams-copy-boundary-"));
+    temporaryRoots.push(destination);
+    writeFileSync(path.join(source, ".gitignore"), "backlog/\n.local/\ntest-results/\n");
+    execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: source });
+    execFileSync("git", ["add", "."], { cwd: source });
+    for (const directory of ["backlog", ".local", "test-results"]) {
+      mkdirSync(path.join(source, directory));
+      const file = `${directory}/execution.md`;
+      writeFileSync(path.join(source, file), "Local execution record\n");
+      execFileSync("git", ["add", "--force", file], { cwd: source });
+      expect(() => createDisposableCopy(destination, source)).toThrow("must not be inherited");
+      expect(readdirSync(destination)).toEqual([]);
+      execFileSync("git", ["rm", "--cached", "--force", file], { cwd: source });
+    }
+  });
+
   it("accepts a complete derived identity without starter residue", () => {
     expect(runVerifier(createDerivedFixture())).toContain("derivation_identity=valid");
   });

@@ -66,17 +66,21 @@ function run(command, args, cwd) {
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed with status ${result.status}.`);
 }
 
-function trackedFiles() {
-  return execFileSync("git", ["ls-files", "-z"], { cwd: repositoryRoot, encoding: "utf8" })
+function trackedFiles(sourceRoot) {
+  return execFileSync("git", ["ls-files", "-z"], { cwd: sourceRoot, encoding: "utf8" })
     .split("\0")
     .filter(Boolean);
 }
 
-function createDisposableCopy(root) {
-  for (const relativePath of trackedFiles()) {
+export function createDisposableCopy(root, sourceRoot = repositoryRoot) {
+  const files = trackedFiles(sourceRoot);
+  // Check the original index before copying: the destination .gitignore may
+  // otherwise hide a force-added execution artifact from its new Git index.
+  assertNoInheritedExecutionArtifacts(files);
+  for (const relativePath of files) {
     // The default derived product uses GitHub; a SourceCraft mirror is opt-in.
     if (relativePath.startsWith(".sourcecraft/")) continue;
-    const source = path.join(repositoryRoot, relativePath);
+    const source = path.join(sourceRoot, relativePath);
     if (!existsSync(source)) continue;
     const destination = path.join(root, transform(relativePath));
     mkdirSync(path.dirname(destination), { recursive: true });
