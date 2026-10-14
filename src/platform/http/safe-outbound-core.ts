@@ -45,6 +45,14 @@ export interface SafeOutboundResult {
   body: Uint8Array;
 }
 
+export interface SafeOutboundStreamResult {
+  status: number;
+  contentType: string;
+  contentLength: number | null;
+  body: AsyncIterable<Uint8Array>;
+  close(): void;
+}
+
 export type SafeOutboundErrorCode =
   | "INVALID_URL"
   | "PROTOCOL_DENIED"
@@ -73,6 +81,7 @@ const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_MAX_REDIRECTS = 3;
 const MAX_TIMEOUT_MS = 60_000;
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024;
+const MAX_STREAM_BYTES = 256 * 1024 * 1024;
 const METADATA_HOSTS = new Set(["metadata.google.internal", "metadata.internal"]);
 
 const blockedAddresses = new BlockList();
@@ -200,17 +209,18 @@ async function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T
   });
 }
 
-export async function executeSafeOutbound(
+async function openSafeOutbound(
   input: string | URL,
   policy: SafeOutboundPolicy,
   dependencies: SafeOutboundDependencies,
-): Promise<SafeOutboundResult> {
+  maximumBytes: number,
+): Promise<SafeOutboundStreamResult> {
   if (policy.allowedHosts.length === 0 || policy.allowedContentTypes.length === 0) {
     throw new SafeOutboundError("TARGET_DENIED", "Outbound allowlist is required");
   }
   const allowedHosts = new Set(policy.allowedHosts.map((host) => normalizeHostname(host)));
   const timeoutMs = boundedInteger(policy.timeoutMs, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, "timeoutMs");
-  const maxBytes = boundedInteger(policy.maxBytes, DEFAULT_MAX_BYTES, MAX_RESPONSE_BYTES, "maxBytes");
+  const maxBytes = boundedInteger(policy.maxBytes, DEFAULT_MAX_BYTES, maximumBytes, "maxBytes");
   const maxRedirects = boundedInteger(
     (policy.maxRedirects ?? DEFAULT_MAX_REDIRECTS) + 1,
     DEFAULT_MAX_REDIRECTS + 1,
@@ -220,18 +230,20 @@ export async function executeSafeOutbound(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: SafeOutboundTransportResponse | undefined;
+  let closed = false;
   const abortResponse = () => response?.abort();
-  controller.signal.addEventListener("abort", abortResponse, { once: true });
   const cancel = () => controller.abort();
-  policy.signal?.addEventListener("abort", cancel, { once: true });
-  if (policy.signal?.aborted) cancel();
-
   const close = () => {
+    if (closed) return;
+    closed = true;
     clearTimeout(timeout);
     controller.abort();
     controller.signal.removeEventListener("abort", abortResponse);
     policy.signal?.removeEventListener("abort", cancel);
   };
+  controller.signal.addEventListener("abort", abortResponse, { once: true });
+  policy.signal?.addEventListener("abort", cancel, { once: true });
+  if (policy.signal?.aborted) cancel();
 
   try {
     let currentUrl = parseUrl(input);
@@ -280,37 +292,72 @@ export async function executeSafeOutbound(
         throw new SafeOutboundError("RESPONSE_TOO_LARGE", "Outbound response exceeds the byte limit");
       }
       const expectedBytes = contentLength === undefined ? null : Number(contentLength);
-      const chunks: Uint8Array[] = [];
-      let receivedBytes = 0;
-      const iterator = transport.body[Symbol.asyncIterator]();
-      try {
-        while (true) {
-          if (controller.signal.aborted) {
-            throw new SafeOutboundError("TIMEOUT", "Outbound request timed out or was closed");
+      let consumed = false;
+      const body: AsyncIterable<Uint8Array> = {
+        [Symbol.asyncIterator]: async function* () {
+          if (consumed) throw new SafeOutboundError("INVALID_URL", "Outbound body is single-use");
+          consumed = true;
+          const iterator = transport.body[Symbol.asyncIterator]();
+          let receivedBytes = 0;
+          try {
+            while (true) {
+              if (controller.signal.aborted) {
+                throw new SafeOutboundError("TIMEOUT", "Outbound request timed out or was closed");
+              }
+              const next = await raceAbort(iterator.next(), controller.signal);
+              if (next.done) break;
+              receivedBytes += next.value.byteLength;
+              if (receivedBytes > maxBytes) {
+                throw new SafeOutboundError("RESPONSE_TOO_LARGE", "Outbound response exceeds the byte limit");
+              }
+              yield next.value;
+            }
+            if (expectedBytes !== null && receivedBytes !== expectedBytes) {
+              throw new SafeOutboundError("RESPONSE_TRUNCATED", "Outbound body length differs from its declaration");
+            }
+          } finally {
+            close();
+            void iterator.return?.().catch(() => undefined);
           }
-          const next = await raceAbort(iterator.next(), controller.signal);
-          if (next.done) break;
-          receivedBytes += next.value.byteLength;
-          if (receivedBytes > maxBytes) {
-            throw new SafeOutboundError("RESPONSE_TOO_LARGE", "Outbound response exceeds the byte limit");
-          }
-          chunks.push(next.value);
-        }
-        if (expectedBytes !== null && receivedBytes !== expectedBytes) {
-          throw new SafeOutboundError("RESPONSE_TRUNCATED", "Outbound body length differs from its declaration");
-        }
-      } finally {
-        void iterator.return?.().catch(() => undefined);
-      }
-      const body = new Uint8Array(receivedBytes);
-      let offset = 0;
-      for (const chunk of chunks) {
-        body.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      return { status: transport.status, contentType, body };
+        },
+      };
+      return { status: transport.status, contentType, contentLength: expectedBytes, body, close };
     }
-  } finally {
+  } catch (error) {
     close();
+    throw error;
+  }
+}
+
+export function executeSafeOutboundStream(
+  input: string | URL,
+  policy: SafeOutboundPolicy,
+  dependencies: SafeOutboundDependencies,
+): Promise<SafeOutboundStreamResult> {
+  return openSafeOutbound(input, policy, dependencies, MAX_STREAM_BYTES);
+}
+
+export async function executeSafeOutbound(
+  input: string | URL,
+  policy: SafeOutboundPolicy,
+  dependencies: SafeOutboundDependencies,
+): Promise<SafeOutboundResult> {
+  const stream = await openSafeOutbound(input, policy, dependencies, MAX_RESPONSE_BYTES);
+  const chunks: Uint8Array[] = [];
+  let receivedBytes = 0;
+  try {
+    for await (const chunk of stream.body) {
+      chunks.push(chunk);
+      receivedBytes += chunk.byteLength;
+    }
+    const body = new Uint8Array(receivedBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { status: stream.status, contentType: stream.contentType, body };
+  } finally {
+    stream.close();
   }
 }

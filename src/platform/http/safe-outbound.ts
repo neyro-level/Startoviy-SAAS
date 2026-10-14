@@ -8,15 +8,17 @@ import { requireOptionalModule } from "../config/optional-modules.ts";
 import { optionalModules } from "../config/project-identity.ts";
 import {
   executeSafeOutbound,
+  executeSafeOutboundStream,
   SafeOutboundError,
   type SafeOutboundDependencies,
   type SafeOutboundPolicy,
   type SafeOutboundResult,
+  type SafeOutboundStreamResult,
   type SafeOutboundTransportResponse,
 } from "./safe-outbound-core.ts";
 
 export { SafeOutboundError } from "./safe-outbound-core.ts";
-export type { SafeOutboundPolicy, SafeOutboundResult } from "./safe-outbound-core.ts";
+export type { SafeOutboundPolicy, SafeOutboundResult, SafeOutboundStreamResult } from "./safe-outbound-core.ts";
 
 function firstHeader(headers: IncomingHttpHeaders, name: string): string | undefined {
   const value = headers[name];
@@ -75,4 +77,12 @@ export async function safeOutboundBuffered(
 ): Promise<SafeOutboundResult> {
   requireOptionalModule(optionalModules, "outboundHttp");
   return executeSafeOutbound(input, policy, dependencies);
+}
+
+export async function safeOutboundStream(
+  input: string | URL,
+  policy: SafeOutboundPolicy,
+): Promise<SafeOutboundStreamResult> {
+  requireOptionalModule(optionalModules, "outboundHttp");
+  return executeSafeOutboundStream(input, policy, dependencies);
 }

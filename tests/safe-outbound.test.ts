@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { safeOutboundBuffered } from "../src/platform/http/safe-outbound.ts";
 import {
   executeSafeOutbound,
+  executeSafeOutboundStream,
   type SafeOutboundAddress,
   type SafeOutboundDependencies,
   type SafeOutboundTransportResponse,
@@ -133,5 +134,42 @@ describe("safe outbound SSRF contract", () => {
     await expect(safeOutboundBuffered("https://hooks.example.test/hooks", POLICY)).rejects.toMatchObject({
       code: "OPTIONAL_MODULE_DISABLED",
     });
+  });
+
+  it("streams without buffering the whole body and tears down on close", async () => {
+    const transport = response(200, { "content-type": "application/json" }, [new TextEncoder().encode("{}")]);
+    const stream = await executeSafeOutboundStream("https://hooks.example.test/hooks", POLICY, dependencies({
+      request: vi.fn(async () => transport),
+    }));
+    expect(stream).not.toHaveProperty("finalUrl");
+    const first = await stream.body[Symbol.asyncIterator]().next();
+    expect(new TextDecoder().decode(first.value)).toBe("{}");
+    stream.close();
+    expect(transport.abort).toHaveBeenCalled();
+  });
+
+  it("cancels while waiting for headers and aborts a late transport", async () => {
+    const controller = new AbortController();
+    let receive!: (value: SafeOutboundTransportResponse) => void;
+    let requested!: () => void;
+    const started = new Promise<void>((resolve) => { requested = resolve; });
+    const transport = response(200, { "content-type": "application/json" });
+    const pending = executeSafeOutboundStream("https://hooks.example.test/data", { ...POLICY, signal: controller.signal }, dependencies({
+      request: vi.fn(() => { requested(); return new Promise<SafeOutboundTransportResponse>((resolve) => { receive = resolve; }); }),
+    }));
+    await started;
+    controller.abort();
+    await expectCode(pending, "TIMEOUT");
+    receive(transport);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(transport.abort).toHaveBeenCalledOnce();
+  });
+
+  it("does not put a final URL on the stream result", async () => {
+    const stream = await executeSafeOutboundStream("https://hooks.example.test/hooks", POLICY, dependencies());
+    expect(stream).not.toHaveProperty("finalUrl");
+    expect(JSON.stringify(stream)).not.toMatch(/hooks\.example\.test|finalUrl/i);
+    stream.close();
   });
 });
