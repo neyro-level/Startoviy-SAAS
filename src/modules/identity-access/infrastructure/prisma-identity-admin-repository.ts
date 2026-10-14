@@ -334,6 +334,7 @@ export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
       data: { revokedAt: input.now },
     });
     await this.prisma.session.deleteMany({ where: { userId: token.userId } });
+    await this.writeIdentityLoginAudit(token.userId, ["login.recovery", "login.session-revoke"], `login-recovery-setup-${token.userId}`);
     return token.userId;
   }
 
@@ -355,6 +356,7 @@ export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
     await this.prisma.user.update({ where: { id: token.userId }, data: { twoFactorEnabled: false } });
     await this.prisma.platformRecoveryToken.updateMany({ where: { userId: token.userId, consumedAt: null, revokedAt: null }, data: { revokedAt: input.now } });
     await this.prisma.session.deleteMany({ where: { userId: token.userId } });
+    await this.writeIdentityLoginAudit(token.userId, ["login.recovery", "login.session-revoke"], `login-recovery-${token.userId}`);
     return token.userId;
   }
 
@@ -463,6 +465,32 @@ export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
       },
     });
     return result.count === 1;
+  }
+
+  private async writeIdentityLoginAudit(userId: string, actions: readonly string[], correlationId: string): Promise<void> {
+    await this.prisma.$executeRaw(Prisma.sql`
+      select
+        set_config('app.principal_kind', 'identity', true),
+        set_config('app.actor_id', ${userId}, true),
+        set_config('app.organization_id', '', true),
+        set_config('app.correlation_id', ${correlationId}, true)
+    `);
+    for (const action of actions) {
+      await this.prisma.auditEvent.create({
+        data: {
+          organizationId: null,
+          actorType: "USER",
+          actorId: userId,
+          action,
+          entityType: "User",
+          entityId: userId,
+          beforeMarker: Prisma.JsonNull,
+          afterMarker: { sessionsRevoked: true },
+          source: "identity-access",
+          correlationId,
+        },
+      });
+    }
   }
 
   async appendAudit(input: IdentityAdminAuditInput): Promise<void> {

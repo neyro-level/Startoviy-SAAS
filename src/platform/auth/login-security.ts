@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { isClientAccessEnabled } from "../config/server-environment.ts";
 import { createIdentityDatabaseAuthorizationContext, runInAuthorizedDatabaseTransaction } from "../database/transaction.ts";
 import { createPublicErrorResponse } from "../http/error-envelope.ts";
+import { appendLoginAudit, type LoginAuditAction } from "./login-audit.ts";
 import {
   clearedLoginLockoutSnapshot,
   isLoginLocked,
@@ -62,7 +63,12 @@ function invalidLoginResponse(correlationId: string) {
   return createPublicErrorResponse({ ...loginInvalidPublicError, correlationId }, 401);
 }
 
-async function withLockedUser(userId: string, correlationId: string, mutate: (snapshot: LoginLockoutSnapshot) => LoginLockoutSnapshot) {
+async function withLockedUser(
+  userId: string,
+  correlationId: string,
+  mutate: (snapshot: LoginLockoutSnapshot) => LoginLockoutSnapshot,
+  audits: (current: LoginLockoutSnapshot, next: LoginLockoutSnapshot) => readonly LoginAuditAction[],
+) {
   await runInAuthorizedDatabaseTransaction(
     createIdentityDatabaseAuthorizationContext({ userId, correlationId }),
     async (transaction) => {
@@ -74,13 +80,23 @@ async function withLockedUser(userId: string, correlationId: string, mutate: (sn
       `);
       const current = rows[0];
       if (!current) return;
-      const next = mutate({ failedLoginCount: current.failedLoginCount, loginLockedUntil: current.loginLockedUntil });
-      if (next.failedLoginCount === current.failedLoginCount
-        && (next.loginLockedUntil?.getTime() ?? 0) === (current.loginLockedUntil?.getTime() ?? 0)) return;
-      await transaction.user.update({
-        where: { id: userId },
-        data: { failedLoginCount: next.failedLoginCount, loginLockedUntil: next.loginLockedUntil },
-      });
+      const snapshot = { failedLoginCount: current.failedLoginCount, loginLockedUntil: current.loginLockedUntil };
+      const next = mutate(snapshot);
+      if (next.failedLoginCount !== current.failedLoginCount
+        || (next.loginLockedUntil?.getTime() ?? 0) !== (current.loginLockedUntil?.getTime() ?? 0)) {
+        await transaction.user.update({
+          where: { id: userId },
+          data: { failedLoginCount: next.failedLoginCount, loginLockedUntil: next.loginLockedUntil },
+        });
+      }
+      for (const action of audits(snapshot, next)) {
+        await appendLoginAudit(transaction, {
+          userId,
+          action,
+          correlationId,
+          afterMarker: action === "login.locked" ? { locked: true } : action === "login.unlocked" ? { locked: false } : null,
+        });
+      }
     },
   );
 }
@@ -89,9 +105,14 @@ export async function denyLockedLogin(identity: LoginIdentity | null, correlatio
   if (!identity) return null;
   const user = await findLoginUser(identity, correlationId);
   if (!user) return null;
-  if (user.disabledAt || user.setupTokens.length > 0) return invalidLoginResponse(correlationId);
-  if (user.systemRole === "MEMBER" && !isClientAccessEnabled()) return invalidLoginResponse(correlationId);
-  if (!isLoginLocked(user, now)) return null;
+  const denied = user.disabledAt || user.setupTokens.length > 0
+    || (user.systemRole === "MEMBER" && !isClientAccessEnabled())
+    || isLoginLocked(user, now);
+  if (!denied) return null;
+  await runInAuthorizedDatabaseTransaction(
+    createIdentityDatabaseAuthorizationContext({ userId: user.id, correlationId }),
+    (transaction) => appendLoginAudit(transaction, { userId: user.id, action: "login.failed", correlationId }),
+  );
   return invalidLoginResponse(correlationId);
 }
 
@@ -101,11 +122,25 @@ export async function recordLoginResult(input: { identity: LoginIdentity | null;
   if (!user) return;
   const now = input.now ?? new Date();
   if (input.status >= 200 && input.status < 300) {
-    await withLockedUser(user.id, input.correlationId, clearedLoginLockoutSnapshot);
+    await withLockedUser(
+      user.id,
+      input.correlationId,
+      clearedLoginLockoutSnapshot,
+      (current) => current.failedLoginCount > 0 || current.loginLockedUntil
+        ? ["login.password-verified", "login.unlocked"]
+        : ["login.password-verified"],
+    );
     return;
   }
   if (input.status !== 401) return;
-  await withLockedUser(user.id, input.correlationId, (snapshot) => nextLoginFailureSnapshot(snapshot, now));
+  await withLockedUser(
+    user.id,
+    input.correlationId,
+    (snapshot) => nextLoginFailureSnapshot(snapshot, now),
+    (current, next) => isLoginLocked(current, now) ? [] : isLoginLocked(next, now)
+      ? ["login.failed", "login.locked"]
+      : ["login.failed"],
+  );
 }
 
 export async function handleAuthHttpRequest(input: {

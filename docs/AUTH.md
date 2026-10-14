@@ -29,7 +29,14 @@ account lockout. `login-security.ts` adds a transaction-locked per-user
 counter: 10 failed password attempts lock the account for 15 minutes, then the
 window expires and the counter resets. Live locks are not extended by further
 attempts. Locked, unknown and wrong-password sign-in all return the same 401
-public envelope without an account-existence code. Production requires explicit trusted
+public envelope without an account-existence code. Known-user login evidence
+is written to `AuditEvent` as `login.failed`, `login.password-verified`,
+`login.locked`, `login.unlocked`, `login.mfa`, `login.recovery` and
+`login.session-revoke`. Rows are org-null platform evidence: platform-admin
+and staff can read them; a tenant principal cannot. Markers hold only boolean
+flags. Password, OTP, token, username and IP never enter the event. Unknown
+identities produce no row, so client-controlled login text cannot query another
+user. Login does not call an external notifier. Production requires explicit trusted
 proxy CIDRs; without them startup rejects forwarded-IP trust. Local mode with
 no trusted proxy does not trust x-forwarded-for. Rate-limit rules for other
 sensitive setup/TOTP/recovery endpoints remain REQUIRES CHECK; do not infer

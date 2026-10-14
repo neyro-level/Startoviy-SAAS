@@ -7,6 +7,11 @@ import { auth } from "../../src/platform/auth/auth.ts";
 import { handleAuthHttpRequest, recordLoginResult } from "../../src/platform/auth/login-security.ts";
 import { loginInvalidPublicError, loginLockoutPolicy } from "../../src/platform/auth/login-lockout-policy.ts";
 import { getPrismaClient } from "../../src/platform/database/prisma/client.ts";
+import {
+  createDatabaseAuthorizationContext,
+  createIdentityDatabaseAuthorizationContext,
+  runInAuthorizedDatabaseTransaction,
+} from "../../src/platform/database/transaction.ts";
 
 const password = "Synthetic-lock-fixture-only-0000";
 const base = process.env.BETTER_AUTH_URL!;
@@ -85,6 +90,56 @@ describe("native account login lockout", () => {
     const cleared = await prisma.user.findUniqueOrThrow({ where: { id: account.id } });
     expect(cleared.failedLoginCount).toBe(0);
     expect(cleared.loginLockedUntil).toBeNull();
+    const adminEvents = await runInAuthorizedDatabaseTransaction(
+      createDatabaseAuthorizationContext({
+        kind: "platform-admin",
+        userId: "audit-admin",
+        correlationId: randomUUID(),
+      }),
+      (transaction) => transaction.auditEvent.findMany({
+        where: { entityId: account.id, action: { startsWith: "login." } },
+        select: { action: true, actorId: true, afterMarker: true, organizationId: true },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+    expect(adminEvents.map((event) => event.action)).toEqual(expect.arrayContaining([
+      "login.failed",
+      "login.locked",
+      "login.password-verified",
+      "login.unlocked",
+    ]));
+    expect(adminEvents.every((event) => event.actorId === account.id && event.organizationId === null)).toBe(true);
+    expect(JSON.stringify(adminEvents)).not.toMatch(/password|otp|token|@fixture\.test|Synthetic-lock/i);
+    const tenantEvents = await runInAuthorizedDatabaseTransaction(
+      createDatabaseAuthorizationContext({
+        kind: "tenant-user",
+        userId: account.id,
+        organizationId: randomUUID(),
+        membershipId: randomUUID(),
+        role: "ORG_MEMBER",
+        correlationId: randomUUID(),
+      }),
+      (transaction) => transaction.auditEvent.findMany({
+        where: { entityId: account.id, action: { startsWith: "login." } },
+      }),
+    );
+    expect(tenantEvents).toEqual([]);
+    const forged = await runInAuthorizedDatabaseTransaction(
+      createIdentityDatabaseAuthorizationContext({ userId: account.id, correlationId: randomUUID() }),
+      (transaction) => transaction.auditEvent.create({
+        data: {
+          organizationId: null,
+          actorType: "USER",
+          actorId: account.id,
+          action: "login.failed",
+          entityType: "User",
+          entityId: randomUUID(),
+          source: "identity-access",
+          correlationId: randomUUID(),
+        },
+      }).then(() => "wrote", (error) => error),
+    );
+    expect(forged).not.toBe("wrote");
   });
 
   it("denies tenant login when client access is unset and still allows platform admin", async () => {
