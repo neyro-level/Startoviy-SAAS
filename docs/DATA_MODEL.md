@@ -10,7 +10,7 @@ migrations as well as Prisma. Planned models are not schema facts.
 
 | Model | Relations / relevant fields | Boundary |
 | --- | --- | --- |
-| User | sessions/accounts/members/twoFactors/setupTokens/recoveryTokens/notificationReads; systemRole, disabledAt, setupCompletedAt | server-owned identity, fresh principal rereads status |
+| User | sessions/accounts/members/twoFactors/setupTokens/recoveryTokens/notificationReads; systemRole, disabledAt, setupCompletedAt, failedLoginCount, loginLockedUntil | server-owned identity, fresh principal rereads status; login lockout is finite and row-locked |
 | Session | User; token unique, expiresAt, activeOrganizationId, twoFactorVerifiedAt, twoFactorProof, setupCompletedAt, legacy activeTeamId | persisted authority; TOTP proof binds current verified factor/user/session, excluded from public session; selection is not permission proof |
 | Account | User; credential/provider data, password, token candidates | auth-only; issuer/accountId compound uniqueness |
 | Verification | identifier/value/expiresAt | Better Auth verification material, never public DTO |

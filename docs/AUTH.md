@@ -15,11 +15,16 @@ invalid login uses a generic error without account enumeration. Full TOTP,
 setup and recovery interaction in this dialog is still TARGET.
 
 `security-config.ts` configures PostgreSQL-backed rate limits: baseline100
-requests/60s, sign-in username/email5/60s. Production requires explicit trusted
+requests/60s, sign-in username/email5/60s. That path/IP limiter is not the
+account lockout. `login-security.ts` adds a transaction-locked per-user
+counter: 10 failed password attempts lock the account for 15 minutes, then the
+window expires and the counter resets. Live locks are not extended by further
+attempts. Locked, unknown and wrong-password sign-in all return the same 401
+public envelope without an account-existence code. Production requires explicit trusted
 proxy CIDRs; without them startup rejects forwarded-IP trust. Local mode with
 no trusted proxy does not trust x-forwarded-for. Rate-limit rules for other
-sensitive setup/TOTP/recovery endpoints and distributed adversarial evidence
-remain REQUIRES CHECK; do not infer them from the login rule.
+sensitive setup/TOTP/recovery endpoints remain REQUIRES CHECK; do not infer
+them from the login rule.
 
 ## VERIFIED persisted session and authority
 
