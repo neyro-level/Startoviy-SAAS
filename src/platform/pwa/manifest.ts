@@ -1,10 +1,11 @@
+import { publicProjectIdentity } from "../config/project-identity.ts";
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "АМС Старт",
-    short_name: "АМС Старт",
-    description: "Стартовая база для CRM, аналитических кабинетов и внутренних веб-приложений.",
+    name: publicProjectIdentity.productName,
+    short_name: publicProjectIdentity.shortName,
+    description: publicProjectIdentity.description,
     start_url: "/dashboard/",
     scope: "/",
     display: "standalone",
@@ -12,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0c1117",
     icons: [
       {
-        src: "/ams-start-icon.svg",
+        src: publicProjectIdentity.iconPath,
         sizes: "any",
         type: "image/svg+xml",
         purpose: "maskable",

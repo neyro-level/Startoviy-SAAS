@@ -1,4 +1,5 @@
 import "server-only";
+import { projectIdentity } from "../config/project-identity.ts";
 
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth";
@@ -29,7 +30,7 @@ export const auth =
       ? betterAuth({
         secret: authEnvironment.secret,
         baseURL: authEnvironment.baseUrl,
-        appName: "АМС Старт",
+        appName: projectIdentity.identity.productName,
         session: {
           additionalFields: {
             twoFactorVerifiedAt: {

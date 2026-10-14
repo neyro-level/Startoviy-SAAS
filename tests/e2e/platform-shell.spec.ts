@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { optionalModules, publicProjectIdentity } from "../../src/platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../src/platform/config/optional-modules.ts";
 
 test("public starter page has no horizontal overflow", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "АМС Старт" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: publicProjectIdentity.productName })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
 });
@@ -10,22 +12,22 @@ test("public starter page has no horizontal overflow", async ({ page }) => {
 test("legal pages stay available", async ({ page }) => {
   for (const route of ["/politika/", "/soglasie/", "/cookies/", "/terms/"]) {
     await page.goto(route);
-    await expect(page.locator("header").getByRole("link", { name: /АМС Старт/ })).toBeVisible();
+    await expect(page.locator("header").getByRole("link", { name: `${publicProjectIdentity.productName} - на главную` })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     expect(overflow).toBe(false);
   }
 });
 
 test("PWA manifest is available", async ({ page }) => {
-  const response = await page.goto("/manifest.webmanifest");
-  expect(response?.ok()).toBe(true);
-  const payload = await page.evaluate(() => document.body.innerText);
-  expect(payload).toContain("АМС Старт");
+  const response = await page.request.get("/manifest.webmanifest");
+  expect(response.status()).toBe(isModuleEnabled(optionalModules, "pwa") ? 200 : 404);
+  if (response.ok()) expect(await response.json()).toMatchObject({ name: publicProjectIdentity.productName });
 });
 
 test("offline page is available", async ({ page }) => {
-  await page.goto("/offline/");
-  await expect(page.getByRole("heading", { name: /Откройте страницу снова/ })).toBeVisible();
+  const response = await page.goto("/offline/");
+  if (isModuleEnabled(optionalModules, "pwa")) await expect(page.getByRole("heading", { name: /Откройте страницу снова/ })).toBeVisible();
+  else expect(response?.status()).toBe(404);
 });
 
 test("API responses are not cacheable", async ({ page }) => {

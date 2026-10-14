@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { parse } from "yaml";
 import { createHash } from "node:crypto";
+import { parseProjectIdentityJson } from "../../src/platform/config/identity-contract.ts";
 
 const sharedVerifier = "./.github/workflows/ams-verify.yml";
 const reviewedProvenance = {
@@ -18,7 +19,8 @@ const exactHead = "${{ github.event.pull_request.head.sha || github.sha }}";
 
 // Parse the actual workflow structurally; reject duplicate keys and aliases
 // instead of accepting conflicting permissions through substring matching.
-export function validateGithubPolicy(source, { nodeVersion, packageManager, vendorWorkflow, vendorLock }) {
+export function validateGithubPolicy(source, { nodeVersion, packageManager, vendorWorkflow, vendorLock, profile = "COMMERCIAL" }) {
+  if (!["COMMERCIAL", "CRITICAL"].includes(profile)) throw new Error("Unsupported delivery profile");
   if (!isDeepStrictEqual(vendorLock, reviewedProvenance)
       || typeof vendorWorkflow !== "string"
       || createHash("sha256").update(vendorWorkflow).digest("hex") !== reviewedProvenance.sha256) {
@@ -26,7 +28,7 @@ export function validateGithubPolicy(source, { nodeVersion, packageManager, vend
   }
   const workflow = parse(source, { uniqueKeys: true, maxAliasCount: 0 });
   const expected = {
-    name: "Starter commercial verification",
+    name: `Starter ${profile.toLowerCase()} verification`,
     on: { pull_request: { branches: ["main"] }, push: { branches: ["main"] } },
     permissions: { contents: "read" },
     concurrency: {
@@ -34,7 +36,7 @@ export function validateGithubPolicy(source, { nodeVersion, packageManager, vend
       "cancel-in-progress": true,
     },
     jobs: {
-      "commercial-gate": {
+      [`${profile.toLowerCase()}-gate`]: {
         uses: sharedVerifier,
         with: {
           expected_sha: exactHead,
@@ -60,6 +62,7 @@ if (isMain) {
     packageManager: JSON.parse(readFileSync("package.json", "utf8")).packageManager,
     vendorWorkflow: readFileSync(".github/workflows/ams-verify.yml", "utf8"),
     vendorLock: JSON.parse(readFileSync(".github/workflows/ams-verify.yml.lock.json", "utf8")),
+    profile: parseProjectIdentityJson(readFileSync("starter.identity.json", "utf8")).derivation.deliveryProfile,
   });
   console.log("GitHub consumer policy: PASS (configuration only; provider run/protection need API evidence)");
 }

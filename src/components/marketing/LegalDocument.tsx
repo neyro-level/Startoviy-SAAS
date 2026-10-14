@@ -1,9 +1,12 @@
+import { projectIdentity, publicProjectIdentity } from "../../platform/config/project-identity.ts";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { legalOperator } from "../../shared/legal/legal-config.ts";
+import { createLegalOperator } from "../../shared/legal/legal-config.ts";
 import { SiteFooter } from "./SiteFooter.tsx";
 import styles from "./LegalDocument.module.css";
+
+const legalOperator = createLegalOperator(projectIdentity.identity);
 
 type LegalDocumentProps = {
   eyebrow: string;
@@ -20,9 +23,9 @@ export function LegalDocument({ eyebrow, title, description, version, effectiveD
       <header className="bg-[var(--ch-bg-deepest)] text-[var(--ch-white)]">
         <div className="mx-auto w-full max-w-[1120px] px-5 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-8">
           <div className="flex items-center justify-between gap-6">
-            <Link href="/" className="inline-flex items-center gap-3" aria-label="АМС Старт - на главную">
-              <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">АМС</span>
-              <span className="text-sm font-extrabold">СТАРТ</span>
+            <Link href="/" className="inline-flex items-center gap-3" aria-label={`${publicProjectIdentity.productName} - на главную`}>
+              <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">{publicProjectIdentity.brandMark}</span>
+              <span className="text-sm font-extrabold">{publicProjectIdentity.brandWordmark}</span>
             </Link>
             <Link href="/" className="inline-flex min-h-11 items-center gap-2 border border-[var(--ch-border-control)] px-4 text-sm font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-strong)] hover:text-[var(--ch-white)]">
               <ArrowLeft className="size-4" strokeWidth={1.6} aria-hidden />

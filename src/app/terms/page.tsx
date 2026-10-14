@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { LegalDocument } from "../../components/marketing/LegalDocument.tsx";
 import { TermsContent } from "../../components/marketing/legal/LegalContents.tsx";
+import { publicProjectIdentity } from "../../platform/config/project-identity.ts";
 
 export const metadata: Metadata = {
   title: "Общие условия сотрудничества",
-  description: "Общие условия сотрудничества между АМС и заказчиком.",
+  description: `Общие условия использования ${publicProjectIdentity.productName}.`,
   alternates: { canonical: "/terms/" },
 };
 

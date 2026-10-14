@@ -1,3 +1,4 @@
+import { projectIdentity } from "../../config/project-identity.ts";
 import type { PoolConfig } from "pg";
 import {
   readDatabaseEnvironment,
@@ -10,6 +11,7 @@ export function createPgPoolConfig(databaseUrl: string): PoolConfig {
   const database = parsed.pathname.replace(/^\//, "");
 
   return {
+    application_name: `${projectIdentity.identity.databaseApplicationPrefix}-web`,
     host: parsed.hostname,
     port: parsed.port.length > 0 ? Number(parsed.port) : 5432,
     user: decodeURIComponent(parsed.username),
@@ -29,6 +31,7 @@ export function createPgPoolConfigFromEnvironment(env: DatabaseEnvironment): Poo
     parsedEnvironment.DATABASE_NAME
   ) {
     return {
+      application_name: `${projectIdentity.identity.databaseApplicationPrefix}-web`,
       host: parsedEnvironment.DATABASE_HOST,
       port: parsedEnvironment.DATABASE_PORT ? Number(parsedEnvironment.DATABASE_PORT) : 5432,
       user: parsedEnvironment.DATABASE_USER,

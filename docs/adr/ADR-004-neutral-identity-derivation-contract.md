@@ -1,16 +1,16 @@
 # ADR-004: Neutral identity and copy-source derivation contract
 
-**Status:** accepted
+**Status:** accepted; original copy-only premise superseded by the typed generator.
 
 ## Decision
 
 `АМС Старт` remains a copy-source starter. A derived repository receives its
 identity through one project-owned manifest and a deterministic interface.
-The baseline implements copy-source plus verifier/smoke. The approved current
-program adds a deterministic neutral generator as TARGET under ADR-015; it
-does not introduce a template distribution service or inherited task history.
+The local generator uses exact clean source SHA, a validated typed manifest,
+dry-run and matching-hash apply. It creates an independent unpublished local
+repository; no distribution service, task history or release authority transfers.
 
-E01 implementation must create one readable identity contract and one
+The product uses one readable identity contract and one
 fail-closed verifier. They are the only authoritative inventory of values that
 must change before a copied project is prepared for commercial use.
 
@@ -20,7 +20,7 @@ must change before a copied project is prepared for commercial use.
 | --- | --- | --- | --- |
 | Product identity | app name, slug and package/service label | one product name and slug replace the neutral starter identity | static identity test |
 | Public origin | example origin, sitemap, robots and trusted origin | explicit production origin; loopback origins stay development-only | derivation verifier |
-| Runtime service | health service ID, worker ID, database application names | one bounded service namespace without `ams-start` residue | static identity test |
+| Runtime service | health service ID, worker ID, database application names | one bounded service namespace without source identity residue | static identity test |
 | Database and queue | database role/name examples, pg-boss schema and queue labels | project-specific names with no inherited database or credential | manifest validation |
 | Artifact and operations | image, compose, systemd, Nginx, backup and registry labels | project-owned artifact and deployment identifiers | derivation verifier |
 | Legal and operator data | `TODO:` records and neutral legal copy | real operator data before public release | derivation verifier |
@@ -31,9 +31,10 @@ must change before a copied project is prepared for commercial use.
 - The verifier must report every required unresolved starter token, example
   origin and legal `TODO:` record together; it must not silently accept a
   partially derived copy.
-- It may skip only its own verifier, test and contract documents, which are an
-  explicit fixed allowlist in the verifier. A derived product has no editable
-  or implicit allowlist for application, runtime, operation or legal files.
+- Verifier, tests, documents, assets, SQL/env/ops and tracked paths are all
+  scanned. One exact upstream-reference line under this ADR's historical
+  heading is the immutable exception; no whole-file or folder exemption exists.
+  A derived product has no editable allowlist for runtime, operation or legal files.
 - It operates on local source files and credential-free repository metadata;
   it never reads secrets, database URLs or production configuration.
 - The starter's ordinary checks remain neutral. The derived-copy check runs
@@ -42,19 +43,26 @@ must change before a copied project is prepared for commercial use.
 
 ## Delivery contract
 
-E01 implementation adds the inventory, manifest, verifier and copy-source
-checklist. E01 verification performs a clean-room copy, substitutes the
-required identity values, proves success, then proves that one restored token
-fails. Auth, tenant, RLS, command and asynchronous behavior stay outside this
-epic.
+The manifest, derivation interface and independent copied proof belong to
+[DERIVATION](../DERIVATION.md). Restored source/donor markers, missing identity,
+wrong origin and inherited local/execution material must fail before release.
+Authentication, tenant isolation and active worker proof remain separate
+runtime requirements; static conformance is not their execution evidence.
 
 ## Consequences
 
 - A new product receives a single auditable substitution list instead of a
   manual search across application, runtime and operations files.
-- `ams-start` is a deliberate source identity, never a hidden production
+- The deliberate source namespace must never become a hidden production
   dependency inherited by a derived project.
 - The original deferred-generator premise is superseded by the approved current
   program/ADR-015. The generator must preserve this manifest/fail-closed proof,
-  omit execution inputs and require no manual history cleanup; until implemented
-  and independently tested, existing copy-source smoke is not generator proof.
+  omit execution inputs and require no manual history cleanup. A mechanical
+  copy smoke alone is not proof of the actual generator or release readiness.
+
+## Historical upstream reference
+
+Historical upstream reference only: https://github.com/neyro-level/Startoviy-SAAS
+
+This provenance link is historical context, never a runtime origin, repository
+permission, configuration value or product identity.

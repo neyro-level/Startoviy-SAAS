@@ -1,14 +1,16 @@
 import { OutboxStatus } from "../../../generated/prisma/client.ts";
+import { optionalModules } from "../../../platform/config/project-identity.ts";
+import { isModuleEnabled } from "../../../platform/config/optional-modules.ts";
 import { runInSystemJobDatabaseTransaction } from "../../../platform/database/transaction.ts";
 import { OUTBOX_WORKER_RUNTIME } from "./runtime-heartbeat.ts";
 
 export interface WorkerHeartbeatHealth {
-  status: "healthy" | "stale" | "unknown";
+  status: "healthy" | "stale" | "unknown" | "disabled";
   lastHeartbeatAt: string | null;
 }
 
 export interface QueueHealth {
-  status: "healthy" | "degraded";
+  status: "healthy" | "degraded" | "disabled";
   pending: number;
   processing: number;
   deadLetter: number;
@@ -29,6 +31,12 @@ export function toWorkerStatus(lastHeartbeatAt: Date | null, now: Date) {
 }
 
 export async function getOperationalReadiness(now = new Date()): Promise<OperationalReadiness> {
+  if (!isModuleEnabled(optionalModules, "outboxPlusQueue")) {
+    // Core database readiness still has to succeed; disabled is not a probe PASS.
+    await runInSystemJobDatabaseTransaction({ jobName: "operations-readiness", correlationId: `readiness-${now.getTime()}` },
+      (transaction) => transaction.$queryRaw`SELECT 1`);
+    return { queue: { status: "disabled", pending: 0, processing: 0, deadLetter: 0 }, worker: { status: "disabled", lastHeartbeatAt: null } };
+  }
   const [pending, processing, deadLetter, latestHeartbeat] =
     await runInSystemJobDatabaseTransaction(
       {

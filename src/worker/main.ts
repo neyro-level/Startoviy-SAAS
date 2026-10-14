@@ -1,3 +1,5 @@
+import { projectIdentity } from "../platform/config/project-identity.ts";
+import { requireOptionalModule } from "../platform/config/optional-modules.ts";
 import {
   drainOutbox,
   runOutboxWorker,
@@ -16,7 +18,8 @@ async function main() {
   }
 
   if (command === "outbox-drain") {
-    const result = await drainOutbox({ workerId: argument ?? "ams-start-worker" });
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
+    const result = await drainOutbox({ workerId: argument ?? projectIdentity.identity.workerId });
     logger.info({ event: "outbox_drain_finished", ...result }, "outbox drain finished");
     if (result.failed > 0) {
       process.exitCode = 1;
@@ -25,13 +28,14 @@ async function main() {
   }
 
   if (command === "outbox-worker") {
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
     const controller = new AbortController();
     const stop = () => controller.abort();
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
     try {
       const result = await runOutboxWorker({
-        workerId: argument ?? `ams-start-worker-${process.pid}`,
+        workerId: argument ?? `${projectIdentity.identity.workerId}-${process.pid}`,
         pollIntervalMs: Number(process.env.OUTBOX_POLL_DELAY_MS ?? 1_000),
         shutdownDrainTimeoutMs: Number(
           process.env.OUTBOX_SHUTDOWN_DRAIN_TIMEOUT_MS ?? 30_000,
@@ -50,6 +54,7 @@ async function main() {
   }
 
   if (command === "outbox-retention") {
+    requireOptionalModule(projectIdentity.derivation.optionalModules, "outboxPlusQueue");
     const result = await runReliabilityRetention();
     logger.info({ event: "outbox_retention_finished", ...result }, "outbox retention finished");
     return;

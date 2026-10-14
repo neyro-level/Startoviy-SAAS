@@ -1,6 +1,9 @@
-import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
+import { projectIdentity, publicProjectIdentity } from "../../platform/config/project-identity.ts";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { legalLinks, legalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
+import { legalLinks, createLegalOperator } from "../../shared/legal/legal-config.ts";
+
+const legalOperator = createLegalOperator(projectIdentity.identity);
 
 export function SiteFooter() {
   const phoneHref = `tel:${legalOperator.phone.replace(/[^\d+]/g, "")}`;
@@ -9,9 +12,9 @@ export function SiteFooter() {
     <footer id="site-footer" className="start-landing border-t border-[var(--ch-border-subtle)] bg-[var(--ch-bg-deeper)] text-[var(--ch-white)]" role="contentinfo">
       <div className="mx-auto grid w-full max-w-[1360px] gap-10 px-5 py-14 sm:px-6 md:grid-cols-[1.15fr_0.85fr_0.8fr] lg:gap-16 lg:py-18">
         <div>
-          <Link href="/" className="inline-flex items-center gap-3" aria-label="АМС Старт - на главную">
-            <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">АМС</span>
-            <span className="text-sm font-extrabold">СТАРТ</span>
+          <Link href="/" className="inline-flex items-center gap-3" aria-label={`${publicProjectIdentity.productName} - на главную`}>
+            <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-[11px] font-extrabold">{publicProjectIdentity.brandMark}</span>
+            <span className="text-sm font-extrabold">{publicProjectIdentity.brandWordmark}</span>
           </Link>
           <p className="mt-5 max-w-sm text-sm leading-6 text-[var(--ch-body-ondark)]">
             Нейтральная стартовая база для кабинетов, CRM, аналитики и внутренних веб-приложений.
@@ -34,14 +37,6 @@ export function SiteFooter() {
           <div className="mt-5 grid gap-3">
             <a href={phoneHref} className="w-fit text-sm font-semibold text-[var(--ch-white)] transition hover:text-[var(--ch-soft-white)]">{legalOperator.phone}</a>
             <a href={`mailto:${legalOperator.email}`} className="w-fit text-sm text-[var(--ch-muted-ondark)] transition hover:text-[var(--ch-white)]">{legalOperator.email}</a>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <a href={publicContacts.telegram} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 border border-[var(--ch-border-subtle)] px-3 text-xs font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-hover)] hover:text-[var(--ch-white)]">
-              <Send className="size-4" strokeWidth={1.6} aria-hidden /> Telegram
-            </a>
-            <a href={publicContacts.max} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 border border-[var(--ch-border-subtle)] px-3 text-xs font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-hover)] hover:text-[var(--ch-white)]">
-              <MessageCircle className="size-4" strokeWidth={1.6} aria-hidden /> Max
-            </a>
           </div>
         </address>
       </div>

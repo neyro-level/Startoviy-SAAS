@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { liveHealthSchema, readyHealthSchema } from "../src/platform/http/health.ts";
+import { projectIdentity } from "../src/platform/config/project-identity.ts";
 
 const releaseSha = "a".repeat(40);
 const correlationId = "00000000-0000-4000-8000-000000000000";
@@ -9,19 +10,19 @@ describe("health contracts", () => {
     expect(
       liveHealthSchema.parse({
         status: "ok",
-        service: "ams-start",
+        service: projectIdentity.identity.serviceId,
         releaseSha,
         correlationId,
         time: new Date().toISOString(),
       }).service,
-    ).toBe("ams-start");
+    ).toBe(projectIdentity.identity.serviceId);
   });
 
   it("does not require provider freshness in readiness", () => {
     expect(
       readyHealthSchema.parse({
         status: "ready",
-        service: "ams-start",
+        service: projectIdentity.identity.serviceId,
         releaseSha: null,
         correlationId,
         dependencies: {

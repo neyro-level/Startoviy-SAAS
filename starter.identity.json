@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "mode": "starter",
   "identity": {
     "productName": "АМС Старт",
@@ -12,25 +12,73 @@
     "repositorySlug": "ams-microsaas-starter",
     "legalOperatorName": "TODO: юридическое лицо или ИП",
     "legalOperatorEmail": "TODO: email оператора",
-    "legalOperatorAddress": "TODO: юридический адрес"
+    "legalOperatorAddress": "TODO: юридический адрес",
+    "shortName": "АМС Старт",
+    "description": "Нейтральный стартовый шаблон для CRM, аналитических кабинетов и внутренних веб-приложений.",
+    "iconPath": "/ams-start-icon.svg",
+    "faviconPath": "/ams-favicon.svg",
+    "brandMark": "АМС",
+    "brandWordmark": "СТАРТ",
+    "legalOperatorInn": "TODO: ИНН",
+    "legalOperatorOgrn": "TODO: ОГРН/ОГРНИП",
+    "legalOperatorPhone": "TODO: телефон"
   },
   "derivation": {
-    "sourceRepository": "UNDECIDED",
+    "sourceRepository": "https://github.com/neyro-level/Startoviy-SAAS.git",
     "defaultBranch": "main",
-    "deliveryProfile": "UNDECIDED",
-    "migrationOwner": "UNDECIDED",
+    "deliveryProfile": "COMMERCIAL",
+    "migrationOwner": "ams-start",
     "optionalModules": {
-      "outboxPlusQueue": "UNDECIDED",
-      "pwa": "UNDECIDED",
-      "platformAdmin": "UNDECIDED"
-    }
+      "outboxPlusQueue": "enabled",
+      "pwa": "enabled",
+      "platformAdmin": "enabled",
+      "outboundHttp": "disabled",
+      "objectStorage": "disabled"
+    },
+    "sourceRevision": null,
+    "gitProvider": "github"
   },
   "surfaceInventory": {
-    "product": ["README.md", "docs", "src/app", "src/components", "src/modules"],
-    "publicOrigin": ["src/app/robots.ts", "src/app/sitemap.ts", "src/platform/auth", "ops/nginx"],
-    "runtime": ["src/platform/http", "src/worker", "scripts", "docker-compose.production.yml"],
-    "databaseAndQueue": [".env.example", "src/platform/database", "src/modules/platform-operations", "scripts"],
-    "artifactAndOperations": ["Dockerfile", "docker-compose.production.yml", "ops", "scripts/build-release.mjs"],
-    "legalAndAssets": ["src/shared/legal", "src/components/marketing/legal", "public", "src/app/manifest.ts"]
+    "product": [
+      "README.md",
+      "docs",
+      "src/app",
+      "src/components",
+      "src/modules"
+    ],
+    "publicOrigin": [
+      "src/app/robots.ts",
+      "src/app/sitemap.ts",
+      "src/platform/auth",
+      "ops/nginx"
+    ],
+    "runtime": [
+      "src/platform/http",
+      "src/worker",
+      "scripts",
+      "docker-compose.production.yml"
+    ],
+    "databaseAndQueue": [
+      ".env.example",
+      "src/platform/database",
+      "src/modules/platform-operations",
+      "scripts"
+    ],
+    "artifactAndOperations": [
+      "Dockerfile",
+      "docker-compose.production.yml",
+      "ops",
+      "scripts/build-release.mjs"
+    ],
+    "legalAndAssets": [
+      "src/shared/legal",
+      "src/components/marketing/legal",
+      "public",
+      "src/platform/pwa/manifest.ts"
+    ]
+  },
+  "legalReferences": {
+    "factsDocument": "docs/01_PRD.md",
+    "status": "DEMO"
   }
 }

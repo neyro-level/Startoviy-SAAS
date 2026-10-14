@@ -155,7 +155,7 @@ mutation command. Source owners: `platform/auth/principal-session.ts`,
 | safe outbound | BUILD + CONFIGURE + VERIFY | disabled by default, product-owned allowlist, DNS/IP/rebinding/redirect limits, timeout/size budget and safe errors; no inherited provider credentials |
 | scoped S3/object storage | BUILD + CONFIGURE + VERIFY | optional adapter, neutral project key/metadata ownership, bounded signed access and cross-project denial; no starter bucket/endpoint is live |
 | PWA/public/private shell | EXISTS + VERIFY | globals/primitives/routes and SW private exclusions; authenticated/post-logout/offline/noindex/cache browser proof |
-| derivation distribution | EXISTS + BUILD + VERIFY | current copy-source identity verifier/smoke; automatic generator omits task/plans/history and installs without SourceCraft; deterministic copies and negative fixtures target |
+| derivation distribution | EXISTS + BUILD + VERIFY | typed identity and exact-SHA generator omit task/plans/history; deterministic copies, residue/profile negatives and disposable native/browser proof; independent domain pilot remains target |
 | GitHub merge gate | EXISTS + VERIFY | ADR-015, local byte-exact shared vendor/provenance, exact-head app checks and strict protected main; configuration and provider success are distinct |
 | immutable artifacts/recovery recipes | EXISTS + CONFIGURE + VERIFY | Docker/Compose/release/backup scripts; product-owned paths/roles/digests; disposable restore, rollback and non-root artifact inspection required |
 | live provider domain, billing, public signup, production | DEFER | derived product scope/explicit contract; no automatic inclusion or delivery authority |
@@ -167,7 +167,13 @@ No broker, S3, external provider or live HTTP consumer is a mandatory core
 service. pg-boss uses PostgreSQL; the worker is a separate process only when a
 product chooses async work. `EXISTS` worker tooling is not an enabled production
 consumer. Optional-module decisions are explicit in the identity/derivation
-contract; current manifest decisions are UNDECIDED in starter mode.
+contract. ProjectIdentityV2 has explicit defaults: outbox/PWA/platformAdmin
+enabled, outbound/objectStorage disabled. The strict platform/config validator
+owns server identity; RootLayout passes only its whitelisted public DTO to
+client labels. See DERIVATION for fields/inputs. Only explicit enabled activates a module. Core optional route/action/worker
+guards deny execution before data or DB work; generated infrastructure omits
+disabled worker/maintenance. DERIVATION owns applicable profile proof. Each
+product reruns it; configuration alone never proves its selected runtime.
 
 `TARGET`: disabled optional HTTP/storage/consumer APIs fail closed with a typed
 safe result and require no configured external endpoint. Disabled data paths
