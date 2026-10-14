@@ -45,6 +45,14 @@ describe("bounded log redaction", () => {
     expect(output).toContain("[Circular]");
   });
 
+  it("redacts printf interpolation values after formatting", () => {
+    const output = capture((write) => {
+      createLogger(undefined, { write }).info("password=%s", "hunter2");
+    });
+    expect(output).not.toContain("hunter2");
+    expect(output).toContain("[REDACTED]");
+  });
+
   it("fails closed when the resolved-secret registry is exhausted and does not drop earlier values", () => {
     const registry = new SensitiveValueRegistry(2, 64);
     registry.remember("kept-secret-one");

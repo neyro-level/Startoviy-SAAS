@@ -30,14 +30,25 @@ describe("safe public error contract", () => {
     expect(envelope.error.message).toContain("код обращения");
   });
 
+  it("hides generic URL userinfo instead of copying the provider message", () => {
+    const envelope = toSafePublicError(
+      { code: "UPSTREAM", message: "https://owner:hunter2@example.test/path" },
+      fallback,
+    );
+    expect(JSON.stringify(envelope)).not.toContain("hunter2");
+    expect(envelope.error.message).toContain("код обращения");
+  });
+
   it("renders application and admin error views without a stack", () => {
-    const root = renderToStaticMarkup(<RootError reset={() => undefined} />);
+    const root = renderToStaticMarkup(
+      <RootError error={new Error("postgres://owner:hunter2@db/app")} reset={() => undefined} />,
+    );
     const admin = renderToStaticMarkup(
-      <AdminResourceError error={new Error("postgres://owner:hunter2@db/app\n    at Object.query")} reset={() => undefined} />,
+      <AdminResourceError error={Object.assign(new Error("postgres://owner:hunter2@db/app\n    at Object.query"), { name: "InternalSecretError" })} reset={() => undefined} />,
     );
     expect(root).toContain("APPLICATION_ERROR");
     expect(root).not.toMatch(/postgres:\/\/|at Object/);
     expect(admin).toContain("Не удалось загрузить раздел администрирования");
-    expect(admin).not.toMatch(/postgres:\/\/|hunter2|at Object/);
+    expect(admin).not.toMatch(/postgres:\/\/|hunter2|at Object|InternalSecretError/);
   });
 });

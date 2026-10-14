@@ -21,7 +21,7 @@ export interface PublicErrorInput {
   fieldErrors?: Record<string, string[]>;
 }
 
-const unsafePublicText = /postgres:\/\/|mysql:\/\/|mongodb:\/\/|\bselect\b[\s\S]+\bfrom\b|bearer\s+\S+|password\s*[=:]|\/home\/|at\s+\S+\s+\(/i;
+const unsafePublicText = /postgres:\/\/|mysql:\/\/|mongodb:\/\/|[a-z][a-z0-9+.-]*:\/\/[^/\s]*:[^/\s]+@|\bselect\b[\s\S]+\bfrom\b|bearer\s+\S+|password\s*[=:]|\/home\/|at\s+\S+\s+\(/i;
 
 export function isUnsafePublicText(value: string): boolean {
   return unsafePublicText.test(value);
@@ -43,6 +43,9 @@ export function sanitizePublicError(input: PublicErrorInput): PublicErrorInput {
 }
 
 export function toSafePublicError(error: unknown, fallback: PublicErrorInput): PublicErrorEnvelope {
+  if (error instanceof Error) {
+    return createPublicErrorEnvelope(sanitizePublicError(fallback));
+  }
   const candidate = error && typeof error === "object" && "code" in error && "message" in error
     ? {
       code: String((error as { code: unknown }).code),
@@ -51,9 +54,6 @@ export function toSafePublicError(error: unknown, fallback: PublicErrorInput): P
       fieldErrors: fallback.fieldErrors,
     }
     : fallback;
-  if (error instanceof Error && isUnsafePublicText(error.message)) {
-    return createPublicErrorEnvelope(sanitizePublicError(fallback));
-  }
   return createPublicErrorEnvelope(sanitizePublicError(candidate));
 }
 
