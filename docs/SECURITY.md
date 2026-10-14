@@ -70,6 +70,12 @@ compliance, current production backup or universal deletion API is claimed.
 
 ## HTTP, forms, PWA and public data
 
+`VERIFIED`: opt-in `outboundHttp` exposes a server-only HTTPS adapter with an
+exact host allowlist, port 443, DNS resolved twice and pinned, blocked
+loopback/RFC1918/IPv6-private/link-local/metadata, redirect revalidation,
+timeouts and a byte cap. Credentials are SecretRef, never URL userinfo or a
+client-supplied URL. Address checks are not a full network/proxy policy.
+Streaming intake remains a later bounded-mode task.
 `VERIFIED`: auth uses exact origin and PostgreSQL sign-in rate limit, production
 requires trusted proxy CIDRs. Missing auth/readiness config returns safe503.
 New setup/TOTP/recovery throttling and successful end-to-end flow need proof.

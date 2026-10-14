@@ -61,6 +61,8 @@ export function checkClientSecretBoundary(root) {
         "src/platform/security/secret-ref.ts",
         "src/platform/security/sensitive-values.ts",
         "src/platform/security/sensitive-redaction.ts",
+        "src/platform/http/safe-outbound.ts",
+        "src/platform/http/safe-outbound-core.ts",
         "src/platform/config/server-environment.ts",
       ].includes(relative)) {
         violations.push(`${path.relative(root, client).replaceAll("\\", "/")} imports server secret resolution`);
