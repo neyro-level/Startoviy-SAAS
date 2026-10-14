@@ -9,7 +9,13 @@ evidence on the candidate SHA, not a blanket compliance claim.
 
 Required contract: browser/UI input is untrusted; authentication does not
 replace server permission and resource checks. No secret reaches Git, docs,
-argv, browser or logs. Avoid unnecessary PII in DTOs/events/audit/logs; derived
+argv, browser or logs. SecretRef, redaction and Safe Outbound are `server-only`;
+client modules cannot import them. Product modules enter through `server.ts`
+facades. Raw `fetch()` is allowed only for the browser contact form and the
+service worker; all other outbound HTTP goes through the allowlisted adapter.
+`getPrismaClient()` stays in the database transaction, auth adapter and named
+repositories. Next generated output and those documented internals are not
+violations. Avoid unnecessary PII in DTOs/events/audit/logs; derived
 products define legitimate PII access, lawful retention/export/deletion.
 Platform authority is explicit and never represented as a fake organization.
 External HTTP/email/storage/AI effects are outside the business transaction.
