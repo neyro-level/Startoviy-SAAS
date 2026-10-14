@@ -42,11 +42,13 @@ new external adapters need their own native denial/adversarial tests.
 
 ## Secrets, PII and errors
 
-`VERIFIED`: Pino logger censors explicit password/token/header/database and
-selected payload/user/contact paths. Safe API errors expose code/message and
-correlationId, not persistence detail. This explicit path list does not prove
-arbitrary nested arrays, uppercase keys, Error.message/stack, URL userinfo,
-connection strings or string interpolation are safe.
+`VERIFIED`: Pino still censors explicit password/token/header/database paths.
+A single server sanitizer also walks nested objects, arrays, Error
+message/stack/cause, URL userinfo, emails and registered resolved SecretRef
+values before a line is written. Correlation id and operational `code` stay
+visible. The resolved-secret registry is bounded and has no TTL; overflow
+fails closed with `SECRET_UNAVAILABLE` instead of forgetting a live value.
+Safe API errors expose code/message and correlationId, not persistence detail.
 `VERIFIED`: server-only `platform/security/secret-ref.ts` defines frozen,
 branded environment references without capturing their values. Resolution reads
 the current environment only at the trusted adapter boundary; missing values

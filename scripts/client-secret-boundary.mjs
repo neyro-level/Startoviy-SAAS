@@ -57,7 +57,12 @@ export function checkClientSecretBoundary(root) {
       if (seen.has(file)) return;
       seen.add(file);
       const relative = path.relative(root, file).replaceAll("\\", "/");
-      if (["src/platform/security/secret-ref.ts", "src/platform/config/server-environment.ts"].includes(relative)) {
+      if ([
+        "src/platform/security/secret-ref.ts",
+        "src/platform/security/sensitive-values.ts",
+        "src/platform/security/sensitive-redaction.ts",
+        "src/platform/config/server-environment.ts",
+      ].includes(relative)) {
         violations.push(`${path.relative(root, client).replaceAll("\\", "/")} imports server secret resolution`);
         return;
       }

@@ -1,5 +1,6 @@
 import "server-only";
 import { inspect } from "node:util";
+import { sensitiveValues } from "./sensitive-values.ts";
 
 declare const secretValueBrand: unique symbol;
 const secretRefBrand: unique symbol = Symbol("server-secret-reference");
@@ -37,6 +38,7 @@ export function resolveSecretRef(reference: SecretRef, environment: EnvironmentS
   requireOwned(reference);
   const value = environment[reference.name];
   if (!value) throw new Error("SECRET_UNAVAILABLE");
+  sensitiveValues.remember(value);
   // Only trusted server adapters resolve at the point of I/O. This raw branded
   // string is not a DTO/log/event; branding does not make serialization safe.
   return value as SecretValue;
