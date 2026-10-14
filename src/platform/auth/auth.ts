@@ -15,6 +15,7 @@ import { getPrismaClient } from "../database/prisma/client.ts";
 import {
   createAuthIpAddressConfig,
   createAuthRateLimitConfig,
+  createEmailPasswordConfig,
   isTotpVerificationPath,
 } from "./security-config.ts";
 
@@ -51,12 +52,7 @@ export const auth =
         database: prismaAdapter(getPrismaClient(), {
           provider: "postgresql",
         }),
-        emailAndPassword: {
-          enabled: true,
-          disableSignUp: true,
-          minPasswordLength: 8,
-          maxPasswordLength: 128,
-        },
+        emailAndPassword: createEmailPasswordConfig(),
         rateLimit: createAuthRateLimitConfig(),
         advanced: {
           ipAddress: createAuthIpAddressConfig({

@@ -44,7 +44,11 @@ async function enroll(jar: Jar) {
 async function verify(jar: Jar, uri: string) {
   const response = await post(jar, "/two-factor/verify-totp", { code: await otp(uri).totp(), trustDevice: false }); expect(response.status).toBe(200);
 }
-beforeEach(async () => { expect(auth).not.toBeNull(); await prisma.rateLimit.deleteMany(); });
+beforeEach(async () => {
+  expect(auth).not.toBeNull();
+  process.env.CLIENT_ACCESS_ENABLED = "true";
+  await prisma.rateLimit.deleteMany();
+});
 afterEach(async () => {
   await prisma.user.deleteMany({ where: { id: { in: ownedUsers.splice(0) } } });
   await prisma.organization.deleteMany({ where: { id: { in: ownedOrganizations.splice(0) } } });

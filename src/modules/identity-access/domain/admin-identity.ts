@@ -37,18 +37,20 @@ export const createUserInputSchema = z.object({
   tenantRole: tenantRoleSchema.default("VIEWER"),
 });
 
+export const newPasswordSchema = z.string().min(12).max(128);
+
 export const resetUserPasswordInputSchema = z.object({
   userId: identifierSchema,
-  password: fixedPasswordSchema,
+  password: newPasswordSchema,
 });
 
 export const completeAccountSetupInputSchema = z.object({
   token: z.string().trim().min(32).max(256),
-  password: z.string().min(12).max(128),
+  password: newPasswordSchema,
 });
 
 export const issuePlatformRecoveryInputSchema = z.object({ userId: identifierSchema });
-export const completePlatformRecoveryInputSchema = z.object({ token: z.string().trim().min(32).max(256), password: z.string().min(12).max(128) });
+export const completePlatformRecoveryInputSchema = z.object({ token: z.string().trim().min(32).max(256), password: newPasswordSchema });
 
 export const setUserEnabledInputSchema = z.object({
   userId: identifierSchema,

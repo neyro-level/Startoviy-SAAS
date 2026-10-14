@@ -3,7 +3,6 @@ import "server-only";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { isClientAccessEnabled } from "../config/server-environment.ts";
 import { createIdentityDatabaseAuthorizationContext, runInAuthorizedDatabaseTransaction } from "../database/transaction.ts";
-import { getPrismaClient } from "../database/prisma/client.ts";
 import { createPublicErrorResponse } from "../http/error-envelope.ts";
 import {
   clearedLoginLockoutSnapshot,
@@ -35,22 +34,28 @@ export async function getLoginIdentityFromRequest(request: Request): Promise<Log
   }
 }
 
-async function findLoginUser(identity: LoginIdentity) {
-  return getPrismaClient().user.findUnique({
-    where: identity,
-    select: {
-      id: true,
-      systemRole: true,
-      disabledAt: true,
-      failedLoginCount: true,
-      loginLockedUntil: true,
-      setupTokens: {
-        where: { consumedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
-        select: { id: true },
-        take: 1,
+async function findLoginUser(identity: LoginIdentity, correlationId: string) {
+  return runInAuthorizedDatabaseTransaction(
+    createIdentityDatabaseAuthorizationContext({
+      userId: "username" in identity ? `login:${identity.username}` : `login:${identity.email}`,
+      correlationId,
+    }),
+    (transaction) => transaction.user.findUnique({
+      where: identity,
+      select: {
+        id: true,
+        systemRole: true,
+        disabledAt: true,
+        failedLoginCount: true,
+        loginLockedUntil: true,
+        setupTokens: {
+          where: { consumedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+          select: { id: true },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+  );
 }
 
 function invalidLoginResponse(correlationId: string) {
@@ -82,7 +87,7 @@ async function withLockedUser(userId: string, correlationId: string, mutate: (sn
 
 export async function denyLockedLogin(identity: LoginIdentity | null, correlationId: string, now = new Date()): Promise<Response | null> {
   if (!identity) return null;
-  const user = await findLoginUser(identity);
+  const user = await findLoginUser(identity, correlationId);
   if (!user) return null;
   if (user.disabledAt || user.setupTokens.length > 0) return invalidLoginResponse(correlationId);
   if (user.systemRole === "MEMBER" && !isClientAccessEnabled()) return invalidLoginResponse(correlationId);
@@ -92,7 +97,7 @@ export async function denyLockedLogin(identity: LoginIdentity | null, correlatio
 
 export async function recordLoginResult(input: { identity: LoginIdentity | null; status: number; correlationId: string; now?: Date }) {
   if (!input.identity) return;
-  const user = await findLoginUser(input.identity);
+  const user = await findLoginUser(input.identity, input.correlationId);
   if (!user) return;
   const now = input.now ?? new Date();
   if (input.status >= 200 && input.status < 300) {

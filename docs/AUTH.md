@@ -6,9 +6,15 @@ profile/boundaries; this file owns identity/session/MFA implementation detail.
 
 ## VERIFIED framework and login
 
-Better Auth is the sole identity/password/session framework. `auth.ts` uses
+Better Auth is the sole identity/password/session framework. Installed
+baseline remains pinned `better-auth`/`@better-auth/prisma-adapter` 1.7.2.
+Donor 1.7.7 patches GHSA-965c-763c-88jm for Magic Link plus social/OAuth
+state; this starter enables neither plugin, so the upgrade is not a required
+security fix and is not taken as a hidden schema/RISKY change. `auth.ts` uses
 Prisma adapter, username and twoFactor plugins, exact configured base origin,
-email/password enabled and public signup disabled. Auth is unavailable when
+email/password enabled and public signup disabled. Login still accepts
+existing 8-character hashes; new operator-set passwords (setup, recovery,
+admin reset) require 12–128 characters. Auth is unavailable when
 required auth/database configuration is absent; API returns safe503.
 Public LoginDialog submits username/password and redirects to dashboard;
 invalid login uses a generic error without account enumeration. Tenant

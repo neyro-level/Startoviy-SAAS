@@ -57,7 +57,7 @@ introduced.
 | No permanent bootstrap password | provisioning commands issue setup token rather than a reusable password; migration revokes fallback after setup | command tests and safe-log inspection; E2E verifies fallback cannot obtain business principal |
 | Admin recovery is deterministic | hashed one-time recovery state; operator-only audited recovery command; factor re-enrolment and material rotation | unit lifecycle tests; PostgreSQL integration; operator runbook dry-run without secret output |
 | Persistent auth rate limits and safe network policy | PostgreSQL rate-limit repository; exact trusted-origin/proxy configuration; normalized public error contract | unit configuration/error tests; PostgreSQL concurrency integration; E2E throttling and safe-log inspection |
-| Compatible Better Auth baseline | exact installed `better-auth` and adapter version checked against official documentation before schema/config change | version evidence, generated Prisma client, migration review, auth E2E |
+| Compatible Better Auth baseline | exact installed `better-auth` and adapter `1.7.2`; do not take 1.7.7 unless Magic Link/OAuth appear or a later CVE requires it | version evidence in `package.json` + `auth-security-config` tests; generated Prisma client; migration review before any upgrade |
 
 ## Data And Boundary Contract
 
