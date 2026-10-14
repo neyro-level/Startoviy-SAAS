@@ -1,5 +1,7 @@
+import { format } from "node:util";
 import pino from "pino";
 import type { DestinationStream, Logger, LoggerOptions } from "pino";
+import { sanitizeLogLine, sanitizeLogRecord, sanitizeLogValue } from "../security/sensitive-redaction.ts";
 
 const REDACTION_PATHS = [
   "password",
@@ -78,6 +80,23 @@ function createOptions(): LoggerOptions {
       level(label) {
         return { level: label };
       },
+      bindings: sanitizeLogRecord,
+    },
+    hooks: {
+      logMethod(args, method) {
+        const list = args.slice(0, 16);
+        const merging = list[0] !== null && typeof list[0] === "object" ? list[0] : undefined;
+        const messageArgs = merging === undefined ? list : list.slice(1);
+        if (typeof messageArgs[0] === "string" && messageArgs.length > 1) {
+          const formatted = sanitizeLogValue(format(...(messageArgs as [string, ...unknown[]])));
+          method.apply(this, (merging === undefined ? [formatted] : [sanitizeLogValue(merging), formatted]) as Parameters<typeof method>);
+          return;
+        }
+        method.apply(this, list.map((argument) => sanitizeLogValue(argument)) as Parameters<typeof method>);
+      },
+      // Child bindings are serialized once by Pino. Recheck the final line so
+      // values registered after child creation are still protected.
+      streamWrite: sanitizeLogLine,
     },
     redact: {
       paths: [...REDACTION_PATHS],

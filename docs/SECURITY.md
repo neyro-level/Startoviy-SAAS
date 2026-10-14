@@ -9,7 +9,13 @@ evidence on the candidate SHA, not a blanket compliance claim.
 
 Required contract: browser/UI input is untrusted; authentication does not
 replace server permission and resource checks. No secret reaches Git, docs,
-argv, browser or logs. Avoid unnecessary PII in DTOs/events/audit/logs; derived
+argv, browser or logs. SecretRef, redaction and Safe Outbound are `server-only`;
+client modules cannot import them. Product modules enter through `server.ts`
+facades. Raw `fetch()` is allowed only for the browser contact form and the
+service worker; all other outbound HTTP goes through the allowlisted adapter.
+`getPrismaClient()` stays in the database transaction, auth adapter and named
+repositories. Next generated output and those documented internals are not
+violations. Avoid unnecessary PII in DTOs/events/audit/logs; derived
 products define legitimate PII access, lawful retention/export/deletion.
 Platform authority is explicit and never represented as a fake organization.
 External HTTP/email/storage/AI effects are outside the business transaction.
@@ -42,20 +48,45 @@ new external adapters need their own native denial/adversarial tests.
 
 ## Secrets, PII and errors
 
-`VERIFIED`: Pino logger censors explicit password/token/header/database and
-selected payload/user/contact paths. Safe API errors expose code/message and
-correlationId, not persistence detail. This explicit path list does not prove
-arbitrary nested arrays, uppercase keys, Error.message/stack, URL userinfo,
-connection strings or string interpolation are safe.
-`TARGET / REQUIRES CHECK`: typed SecretRef resolution server-side, adversarial
-nested/error/log cases and sensitive-source lints. Callers never serialize raw
-secret values; resolve only an owned reference at the narrow adapter boundary.
+`VERIFIED`: Pino still censors explicit password/token/header/database paths.
+A single server sanitizer also walks nested objects, arrays, Error
+message/stack/cause, URL userinfo, emails and registered resolved SecretRef
+values before a line is written. Correlation id and operational `code` stay
+visible. The resolved-secret registry is bounded and has no TTL; overflow
+fails closed with `SECRET_UNAVAILABLE` instead of forgetting a live value.
+Safe API errors expose code/message and correlationId, not persistence detail.
+`VERIFIED`: server-only `platform/security/secret-ref.ts` defines frozen,
+branded environment references without capturing their values. Resolution reads
+the current environment only at the trusted adapter boundary; missing values
+produce `SECRET_UNAVAILABLE`, forged references `SECRET_REFERENCE_INVALID`.
+JSON, strings and inspect mask the reference; status DTO contains only
+`configured` and `[REDACTED]`. The resolved branded string is still a raw secret:
+never serialize it into a DTO, queue event, browser response or log.
+The architecture guard rejects transitive runtime client imports of SecretRef
+and the existing raw server-environment reader, including
+reexports, aliases and literal dynamic imports; erased types and genuine
+Next server-action RPC boundaries do not ship the server implementation.
+No vault, network/API endpoint or client configuration is added by this primitive.
+`TARGET / REQUIRES CHECK`: adversarial nested/error/log cases and sensitive-source
+lints. Callers never serialize raw secret values; resolve only an owned reference
+at the narrow adapter boundary.
 Value-free names/required conditions belong to [ENVIRONMENT](ENVIRONMENT.md).
 PII inventory and derived retention/legal obligations belong to03; no legal
 compliance, current production backup or universal deletion API is claimed.
 
 ## HTTP, forms, PWA and public data
 
+`VERIFIED`: opt-in `outboundHttp` exposes a server-only HTTPS adapter with an
+exact host allowlist, port 443, DNS resolved twice and pinned, blocked
+loopback/RFC1918/IPv6-private/link-local/metadata, redirect revalidation,
+timeouts and a byte cap. Credentials are SecretRef, never URL userinfo or a
+client-supplied URL. Address checks are not a full network/proxy policy.
+Buffered copies at most `maxBytes`; streaming yields wire chunks under the
+same timeout/size budget and `close()` aborts the socket. Results do not
+include `finalUrl`.
+Public API/action errors go through `toSafePublicError`: SQL, URL userinfo,
+bearer tokens and stacks never become `error.message`. Correlation stays on
+the envelope and `X-Correlation-ID`.
 `VERIFIED`: auth uses exact origin and PostgreSQL sign-in rate limit, production
 requires trusted proxy CIDRs. Missing auth/readiness config returns safe503.
 New setup/TOTP/recovery throttling and successful end-to-end flow need proof.

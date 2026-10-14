@@ -21,14 +21,51 @@ export interface PublicErrorInput {
   fieldErrors?: Record<string, string[]>;
 }
 
+const unsafePublicText = /postgres:\/\/|mysql:\/\/|mongodb:\/\/|[a-z][a-z0-9+.-]*:\/\/[^/\s]*:[^/\s]+@|\bselect\b[\s\S]+\bfrom\b|bearer\s+\S+|password\s*[=:]|\/home\/|at\s+\S+\s+\(/i;
+
+export function isUnsafePublicText(value: string): boolean {
+  return unsafePublicText.test(value);
+}
+
+export function sanitizePublicError(input: PublicErrorInput): PublicErrorInput {
+  const fallback = "Запрос не выполнен. Передайте код обращения в поддержку.";
+  return {
+    code: /^[A-Z][A-Z0-9_]{2,63}$/.test(input.code) ? input.code : "REQUEST_FAILED",
+    message: isUnsafePublicText(input.message) ? fallback : input.message,
+    correlationId: input.correlationId,
+    fieldErrors: Object.fromEntries(
+      Object.entries(input.fieldErrors ?? {}).map(([field, values]) => [
+        field,
+        values.filter((value) => !isUnsafePublicText(value)),
+      ]),
+    ),
+  };
+}
+
+export function toSafePublicError(error: unknown, fallback: PublicErrorInput): PublicErrorEnvelope {
+  if (error instanceof Error) {
+    return createPublicErrorEnvelope(sanitizePublicError(fallback));
+  }
+  const candidate = error && typeof error === "object" && "code" in error && "message" in error
+    ? {
+      code: String((error as { code: unknown }).code),
+      message: String((error as { message: unknown }).message),
+      correlationId: fallback.correlationId,
+      fieldErrors: fallback.fieldErrors,
+    }
+    : fallback;
+  return createPublicErrorEnvelope(sanitizePublicError(candidate));
+}
+
 export function createPublicErrorEnvelope(input: PublicErrorInput): PublicErrorEnvelope {
+  const safe = sanitizePublicError(input);
   return publicErrorEnvelopeSchema.parse({
     ok: false,
     error: {
-      code: input.code,
-      message: input.message,
-      fieldErrors: input.fieldErrors ?? {},
-      correlationId: input.correlationId,
+      code: safe.code,
+      message: safe.message,
+      fieldErrors: safe.fieldErrors ?? {},
+      correlationId: safe.correlationId,
     },
   });
 }
