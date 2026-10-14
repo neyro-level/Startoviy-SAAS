@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { PrincipalContext } from "../authorization/principal.ts";
 import { createCorrelationId } from "../http/correlation.ts";
+import { sanitizePublicError } from "../http/error-envelope.ts";
+import { getLogger } from "../observability/logger.ts";
 import {
   CabinetPrincipalError,
   requireCurrentCabinetPrincipal,
@@ -106,12 +108,19 @@ export function createActionBoundary(dependencies: ActionBoundaryDependencies) {
                   code: "ACTION_FAILED",
                   message: "Не удалось выполнить действие.",
                 };
-        return {
-          ok: false,
+        const safe = sanitizePublicError({
           code: mapped.code,
           message: mapped.message,
           correlationId,
-          fieldErrors: mapped.fieldErrors ?? {},
+          fieldErrors: mapped.fieldErrors,
+        });
+        getLogger({ route: "action", correlationId }).error({ err: error, code: safe.code }, "action failed");
+        return {
+          ok: false,
+          code: safe.code,
+          message: safe.message,
+          correlationId,
+          fieldErrors: safe.fieldErrors ?? {},
         };
       }
     };

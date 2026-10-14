@@ -25,7 +25,7 @@
     "verify:rls-coverage": "node scripts/verify-rls-coverage.mjs",
     "derive:verify": "node scripts/verify-derivation.mjs",
     "derive:smoke": "node scripts/verify-clean-room-derivation.mjs",
-    "test:security": "vitest run tests/principal.test.ts tests/starter-contracts.test.ts tests/pwa.test.ts tests/secret-ref.test.ts tests/sensitive-redaction.test.ts tests/client-secret-boundary.test.ts tests/safe-outbound.test.ts",
+    "test:security": "vitest run tests/principal.test.ts tests/starter-contracts.test.ts tests/pwa.test.ts tests/secret-ref.test.ts tests/sensitive-redaction.test.ts tests/client-secret-boundary.test.ts tests/safe-outbound.test.ts tests/public-error-contract.test.tsx",
     "test:e2e": "pnpm build && node scripts/run-e2e-tests.mjs",
     "test:e2e:run": "node scripts/run-e2e-tests.mjs",
     "playwright:install": "playwright install chromium",
