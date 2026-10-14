@@ -13,7 +13,7 @@ const PRISMA_ALLOWLIST = new Set([
   "src/modules/notifications/infrastructure/prisma-notification-repository.ts",
 ]);
 const SERVER_ONLY_PREFIXES = [
-  "src/platform/security/",
+  "src/platform/security/secret-ref",
   "src/platform/http/safe-outbound",
   "src/platform/storage/",
 ];

@@ -1,5 +1,3 @@
-import "server-only";
-
 export const REDACTED_VALUE = "[REDACTED]";
 
 export class SensitiveValueRegistry {

@@ -1,4 +1,3 @@
-import "server-only";
 import { types } from "node:util";
 import { REDACTED_VALUE, sensitiveValues, type SensitiveValueRegistry } from "./sensitive-values.ts";
 
