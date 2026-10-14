@@ -54,6 +54,7 @@ async function fixture() {
 
 beforeEach(async () => {
   expect(auth).not.toBeNull();
+  process.env.CLIENT_ACCESS_ENABLED = "true";
   await prisma.rateLimit.deleteMany();
 });
 afterEach(async () => {
@@ -84,5 +85,39 @@ describe("native account login lockout", () => {
     const cleared = await prisma.user.findUniqueOrThrow({ where: { id: account.id } });
     expect(cleared.failedLoginCount).toBe(0);
     expect(cleared.loginLockedUntil).toBeNull();
+  });
+
+  it("denies tenant login when client access is unset and still allows platform admin", async () => {
+    delete process.env.CLIENT_ACCESS_ENABLED;
+    const member = await fixture();
+    const denied = await post("/sign-in/username", { username: member.username, password });
+    expect(denied.status).toBe(401);
+    expect(await denied.json()).toMatchObject({ error: loginInvalidPublicError });
+    const adminId = randomUUID();
+    const adminUsername = `adm_${adminId.replaceAll("-", "").slice(0, 20)}`;
+    ownedUsers.push(adminId);
+    await prisma.user.create({
+      data: {
+        id: adminId, name: "Synthetic Admin", username: adminUsername, email: `${adminUsername}@fixture.test`,
+        systemRole: "PLATFORM_ADMIN",
+        accounts: { create: { id: randomUUID(), issuer: createLocalAccountIssuer("credential"), accountId: adminId, providerId: "credential", password: await hashPassword(password) } },
+      },
+    });
+    expect((await post("/sign-in/username", { username: adminUsername, password })).status).toBe(200);
+  });
+
+  it("denies disabled and setup-pending accounts with the same public envelope", async () => {
+    const disabled = await fixture();
+    await prisma.user.update({ where: { id: disabled.id }, data: { disabledAt: new Date() } });
+    const disabledResponse = await post("/sign-in/username", { username: disabled.username, password });
+    expect(disabledResponse.status).toBe(401);
+    expect(await disabledResponse.json()).toMatchObject({ error: loginInvalidPublicError });
+    const pending = await fixture();
+    await prisma.accountSetupToken.create({
+      data: { userId: pending.id, tokenHash: `pending-${pending.id}`, expiresAt: new Date(Date.now() + 60_000) },
+    });
+    const pendingResponse = await post("/sign-in/username", { username: pending.username, password });
+    expect(pendingResponse.status).toBe(401);
+    expect(await pendingResponse.json()).toMatchObject({ error: loginInvalidPublicError });
   });
 });

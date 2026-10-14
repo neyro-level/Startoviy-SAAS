@@ -136,6 +136,10 @@ export function readAuthEnvironment(
 
 const releaseShaSchema = z.string().regex(/^[0-9a-f]{40}$/);
 
+export function isClientAccessEnabled(env: EnvironmentSource = process.env): boolean {
+  return env.CLIENT_ACCESS_ENABLED?.trim() === "true";
+}
+
 export function readReleaseSha(env: EnvironmentSource = process.env): string | null {
   const value = env.RELEASE_SHA?.trim();
   if (!value) {

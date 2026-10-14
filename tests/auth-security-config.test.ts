@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readAuthEnvironment } from "../src/platform/config/server-environment.ts";
+import { isClientAccessEnabled, readAuthEnvironment } from "../src/platform/config/server-environment.ts";
 import {
   createAuthIpAddressConfig,
   isTotpVerificationPath,
@@ -32,5 +32,11 @@ describe("auth network and MFA configuration", () => {
     expect(isTotpVerificationPath("/two-factor/verify-totp")).toBe(true);
     expect(isTotpVerificationPath("/two-factor/verify-backup-code")).toBe(false);
     expect(isTotpVerificationPath("/sign-in/username")).toBe(false);
+  });
+
+  it("keeps tenant client access fail-closed unless explicitly enabled", () => {
+    expect(isClientAccessEnabled({})).toBe(false);
+    expect(isClientAccessEnabled({ CLIENT_ACCESS_ENABLED: "false" })).toBe(false);
+    expect(isClientAccessEnabled({ CLIENT_ACCESS_ENABLED: "true" })).toBe(true);
   });
 });

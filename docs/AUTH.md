@@ -11,7 +11,10 @@ Prisma adapter, username and twoFactor plugins, exact configured base origin,
 email/password enabled and public signup disabled. Auth is unavailable when
 required auth/database configuration is absent; API returns safe503.
 Public LoginDialog submits username/password and redirects to dashboard;
-invalid login uses a generic error without account enumeration. Full TOTP,
+invalid login uses a generic error without account enumeration. Tenant
+`MEMBER` login and principal resolution stay fail-closed unless
+`CLIENT_ACCESS_ENABLED=true`; a provisioned account is not the same as
+active access. PLATFORM_ADMIN and STAFF are unchanged. Full TOTP,
 setup and recovery interaction in this dialog is still TARGET.
 
 `security-config.ts` configures PostgreSQL-backed rate limits: baseline100

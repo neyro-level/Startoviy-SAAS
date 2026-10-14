@@ -29,6 +29,7 @@ export const postgresqlEvidenceManifest = Object.freeze({
         "runtime web and worker roles cannot bypass RLS",
         "the declared tenant-model inventory has complete RLS coverage",
         "parallel failed logins lock an account without enumeration or permanent lockout",
+        "disabled, setup-pending and fail-closed MEMBER login stay denied without leaking identity",
       ],
     },
     E04: {

@@ -62,6 +62,7 @@ and [ADR-009](adr/ADR-009-postgresql-security-evidence.md) own the safety contra
 | BETTER_AUTH_SECRET | when auth enabled in any environment; ≥32 chars, no default | auth server; SECRET | readAuthEnvironment; it is not production-only |
 | BETTER_AUTH_URL | when auth enabled, exact app origin | server/public origin; nonsecret | valid URL; HTTPS outside loopback development; trustedOrigins exact |
 | BETTER_AUTH_TRUSTED_PROXY_CIDRS | required production auth; absent local means no forwarded-IP trust | auth server; topology private | valid IP/CIDR list; production startup rejects absent trusted boundary |
+| CLIENT_ACCESS_ENABLED | optional; fail-closed unless the exact value `true` | auth server; nonsecret | MEMBER login/principal denied when unset/false; PLATFORM_ADMIN/STAFF unchanged |
 | NEXT_PUBLIC_CONTACT_API_URL | all CONTACT fields required only to enable contact delivery; absent disables | browser; PUBLIC | public-leads-environment URL schema; ownership/receiver/SSRF policy not proven by this alone |
 | NEXT_PUBLIC_CONTACT_PROJECT_ID | enabled receiver routing identifier | browser; PUBLIC | lowercase/digit/hyphen3…64 |
 | NEXT_PUBLIC_CONTACT_SITE_KEY | enabled receiver public routing key | browser; PUBLIC, never a secret credential |16…128 chars; must not hold private API key |

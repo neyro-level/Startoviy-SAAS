@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Prisma } from "../../generated/prisma/client.ts";
+import { isClientAccessEnabled } from "../config/server-environment.ts";
 import { createIdentityDatabaseAuthorizationContext, runInAuthorizedDatabaseTransaction } from "../database/transaction.ts";
 import { getPrismaClient } from "../database/prisma/client.ts";
 import { createPublicErrorResponse } from "../http/error-envelope.ts";
@@ -37,7 +38,18 @@ export async function getLoginIdentityFromRequest(request: Request): Promise<Log
 async function findLoginUser(identity: LoginIdentity) {
   return getPrismaClient().user.findUnique({
     where: identity,
-    select: { id: true, failedLoginCount: true, loginLockedUntil: true },
+    select: {
+      id: true,
+      systemRole: true,
+      disabledAt: true,
+      failedLoginCount: true,
+      loginLockedUntil: true,
+      setupTokens: {
+        where: { consumedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { id: true },
+        take: 1,
+      },
+    },
   });
 }
 
@@ -72,6 +84,8 @@ export async function denyLockedLogin(identity: LoginIdentity | null, correlatio
   if (!identity) return null;
   const user = await findLoginUser(identity);
   if (!user) return null;
+  if (user.disabledAt || user.setupTokens.length > 0) return invalidLoginResponse(correlationId);
+  if (user.systemRole === "MEMBER" && !isClientAccessEnabled()) return invalidLoginResponse(correlationId);
   if (!isLoginLocked(user, now)) return null;
   return invalidLoginResponse(correlationId);
 }
