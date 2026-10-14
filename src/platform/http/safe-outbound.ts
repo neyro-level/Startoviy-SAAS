@@ -5,7 +5,7 @@ import { request as requestHttps } from "node:https";
 import { isIP } from "node:net";
 import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 import { requireOptionalModule } from "../config/optional-modules.ts";
-import { optionalModules } from "../config/project-identity.ts";
+import { optionalModules, projectIdentity } from "../config/project-identity.ts";
 import {
   executeSafeOutbound,
   executeSafeOutboundStream,
@@ -57,7 +57,7 @@ const dependencies: SafeOutboundDependencies = {
         headers: {
           host: input.url.host,
           accept: input.accept,
-          "user-agent": "AMS-Start-Safe-Outbound/1.0",
+          "user-agent": `${projectIdentity.identity.productSlug}-safe-outbound/1.0`,
           connection: "close",
           ...(input.authorization ? { authorization: input.authorization } : {}),
         },
