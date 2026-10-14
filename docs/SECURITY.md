@@ -102,6 +102,28 @@ states against the final build. [ADR-012](adr/ADR-012-ui-pwa-error-observability
 owns the safety boundary. Public legal/operator fields are demo placeholders;
 derived release cannot reuse them. No client database, domain or provider is inherited.
 
+## Auth attack-path review (E03)
+
+Negative proof is required for each path. Residual items stay TARGET until E11
+and are not production BYPASS.
+
+| Attack path | Negative proof | Residual |
+| --- | --- | --- |
+| Privilege escalation / forged org or project id | `tests/principal.test.ts`; identity-admin authorize + command tests | Project grants remain E04 |
+| 2FA skip / backup-code as admin | `tests/integration/current-session-totp.integration.test.ts`; `tests/e2e/current-session-totp.spec.ts` | Public setup/TOTP UI still TARGET |
+| Disabled, pending-setup or revoked session | lockout integration; principal-runtime; totp disable/revoke cases | none for shipped handlers |
+| Concurrent lockout races | `tests/integration/login-lockout.integration.test.ts` parallel failures | none |
+| Enumeration and leaked auth errors | same public 401 envelope; `tests/public-error-contract.test.tsx` | none |
+| Origin / untrusted forwarded IP | `tests/auth-security-config.test.ts`; production rejects empty proxy CIDRs | none |
+| Secrets in logs or audit | `tests/sensitive-redaction.test.ts`; `tests/login-audit.test.ts` | DB audit isolation proven on integration SHA |
+| Auth rate limit vs account lockout | path/IP 5/60s plus 10/15min lockout; e2e throttle | none |
+| Tenant isolation of login evidence | org-null `AuditEvent` RLS; tenant `findMany` empty in lockout integration | none |
+| Non-existent client receiving admin settings | `CLIENT_ACCESS_ENABLED` fail-closed for MEMBER | none |
+| GHSA-965c Magic Link/OAuth | plugins not enabled; Better Auth stays 1.7.2 | upgrade remains optional |
+
+No nonprod RLS BYPASS exists in the production runtime path. Web/worker roles
+are NOBYPASSRLS; tests may use a guarded loopback `_test` owner only.
+
 ## Evidence and delivery
 
 Unit security/principal/logger tests and native setup/tenant/command/outbox
