@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { nativeProofPostgresEligible } from "../scripts/native-proof-postgres.mjs";
+import { describe, expect, it, vi } from "vitest";
+import { disposeNativeProofCluster, nativeProofPostgresEligible } from "../scripts/native-proof-postgres.mjs";
 
 describe("owned native PostgreSQL backend eligibility", () => {
   it("requires the complete executable toolchain before selecting native", () => {
@@ -15,5 +15,21 @@ describe("owned native PostgreSQL backend eligibility", () => {
       expect(nativeProofPostgresEligible({ env, rootUser: true, insideContainer, hasTool: () => true })).toBe(false);
     }
     expect(nativeProofPostgresEligible({ env: hosted, rootUser: true, insideContainer: true, hasTool: () => true })).toBe(true);
+  });
+  it("removes the cluster directory only after shutdown is confirmed", async () => {
+    const removeDirectory = vi.fn();
+    const stopCluster = vi.fn(async () => { running = false; });
+    let running = true;
+    await disposeNativeProofCluster({ pidExists: () => running, stopCluster, removeDirectory });
+    expect(stopCluster).toHaveBeenCalledOnce();
+    expect(removeDirectory).toHaveBeenCalledOnce();
+    running = true;
+    stopCluster.mockRejectedValueOnce(new Error("pg_ctl stop failed"));
+    removeDirectory.mockClear();
+    await expect(disposeNativeProofCluster({ pidExists: () => running, stopCluster, removeDirectory })).rejects.toThrow("pg_ctl stop failed");
+    expect(removeDirectory).not.toHaveBeenCalled();
+    stopCluster.mockResolvedValueOnce(undefined);
+    await expect(disposeNativeProofCluster({ pidExists: () => true, stopCluster, removeDirectory })).rejects.toThrow("still running");
+    expect(removeDirectory).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,12 @@ export function nativeProofPostgresEligible({ env, rootUser = process.getuid?.()
   return completeTools && (!rootUser || (env.GITHUB_ACTIONS === "true" && env.RUNNER_ENVIRONMENT === "github-hosted" && insideContainer));
 }
 
+export async function disposeNativeProofCluster({ pidExists, stopCluster, removeDirectory }) {
+  if (pidExists()) await stopCluster();
+  if (pidExists()) throw new Error("Native proof cluster is still running");
+  removeDirectory();
+}
+
 // This creates a separate cluster, never borrows a running service or database.
 export async function startNativeProofPostgres({ env, signal, slug }) {
   const bin = "/usr/lib/postgresql/18/bin";
@@ -24,11 +30,11 @@ export async function startNativeProofPostgres({ env, signal, slug }) {
   const run = (name, args, options = {}) => runProofProcess(rootUser ? "runuser" : path.join(bin, name),
     rootUser ? ["-u", "postgres", "--", path.join(bin, name), ...args] : args,
     { env, signal, capture: true, timeoutMs: 30_000, ...options });
-  const stop = async () => {
-    try {
-      if (existsSync(path.join(data, "postmaster.pid"))) await run("pg_ctl", ["-D", data, "-m", "immediate", "-w", "stop"], { signal: undefined });
-    } finally { rmSync(directory, { recursive: true, force: true }); }
-  };
+  const stop = async () => disposeNativeProofCluster({
+    pidExists: () => existsSync(path.join(data, "postmaster.pid")),
+    stopCluster: () => run("pg_ctl", ["-D", data, "-m", "immediate", "-w", "stop"], { signal: undefined }),
+    removeDirectory: () => rmSync(directory, { recursive: true, force: true }),
+  });
   try {
     if (rootUser) await runProofProcess("chown", ["postgres:postgres", directory], { env, signal, capture: true, timeoutMs: 10_000 });
     const version = (await run("postgres", ["--version"])).stdout.trim();

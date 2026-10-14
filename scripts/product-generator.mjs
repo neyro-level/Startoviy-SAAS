@@ -78,7 +78,9 @@ function ownDelivery(source, file, config) {
     return source.replace(/## Delivery\n[\s\S]*?(?=## Checks)/, `## Delivery\n\nThis is an independent derived product with profile \`${profile}\` and GitHub primary.\nThe template's program-specific merge, visibility and release permissions do not transfer.\nThe product owner must establish its own private/public visibility and merge policy,\nconfigure strict exact-head protected PR checks and verify main after an authorized merge.\nNo direct main push, force push, gate bypass or production action is authorized here.\nProduction requires a separate product-owned contract and explicit permission.\n\n`);
   }
   if (file === "README.md") {
-    return source.replace(/^Роль репозитория[^\n]+/m, `Independent derived product, profile \`${profile}\`, GitHub primary. Configure own protected main and merge permissions before delivery; no template approval or production authority transfers. See [architecture](docs/03_ARCHITECTURE.md).`);
+    return source
+      .replace(/^Роль репозитория[^\n]+/m, `Independent derived product, profile \`${profile}\`, GitHub primary. Configure own protected main and merge permissions before delivery; no template approval or production authority transfers. See [architecture](docs/03_ARCHITECTURE.md).`)
+      .replace(/внутренних веб-приложений АМС/u, `внутренних веб-приложений ${config.identity.productName}`);
   }
   if (file === "docs/README.md") return source.replace(/\*\*Статус:\*\*[^\n]+/, `**Статус:** Active. Independent derived product, profile \`${profile}\`; inherited foundation contracts require own product scope/facts/proof.`);
   if (file === "docs/03_ARCHITECTURE.md") {

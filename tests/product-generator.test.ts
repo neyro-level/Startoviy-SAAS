@@ -201,6 +201,8 @@ describe("nonpublishing product generator", () => {
     expect(read("docs/HANDOVER.md")).not.toContain("COMMERCIAL is mandatory");
     expect(read("docs/04_BACKLOG.md")).not.toContain("разрешённый владельцем поэтапный автономный merge");
     expect(read("docs/05_RELEASE_CHECKLIST.md")).not.toContain("возвращён в private по ADR-015");
+    expect(read("README.md")).not.toContain("АМС");
+    expect(read("README.md")).toContain("внутренних веб-приложений Generated atlas-portal");
   });
 
   it("runs the CLI dry-run/apply contract and refuses invalid options without creating a target", () => {
