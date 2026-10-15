@@ -29,7 +29,10 @@ account lockout. `login-security.ts` adds a transaction-locked per-user
 counter: 10 failed password attempts lock the account for 15 minutes, then the
 window expires and the counter resets. Live locks are not extended by further
 attempts. Locked, unknown and wrong-password sign-in all return the same 401
-public envelope without an account-existence code. Known-user login evidence
+public envelope without an account-existence code. Early denials for
+locked, disabled, pending-setup or fail-closed MEMBER accounts still
+pass through Better Auth's path/IP limiter first, using a non-usable
+password so a live lock cannot authenticate; a 429 is returned as-is. Known-user login evidence
 is written to `AuditEvent` as `login.failed`, `login.password-verified`,
 `login.locked`, `login.unlocked`, `login.mfa`, `login.recovery` and
 `login.session-revoke`. Rows are org-null platform evidence: platform-admin
