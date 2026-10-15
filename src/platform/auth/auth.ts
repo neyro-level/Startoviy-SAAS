@@ -6,6 +6,11 @@ import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { recordTotpSessionProof } from "./record-totp-proof.ts";
 import { successfulTotpToken } from "./mfa-session-proof.ts";
+import { appendLoginAudit } from "./login-audit.ts";
+import {
+  createIdentityDatabaseAuthorizationContext,
+  runInAuthorizedDatabaseTransaction,
+} from "../database/transaction.ts";
 import { twoFactor, username } from "better-auth/plugins";
 import {
   hasDatabaseConfiguration,
@@ -15,6 +20,7 @@ import { getPrismaClient } from "../database/prisma/client.ts";
 import {
   createAuthIpAddressConfig,
   createAuthRateLimitConfig,
+  createEmailPasswordConfig,
   isTotpVerificationPath,
 } from "./security-config.ts";
 
@@ -51,12 +57,7 @@ export const auth =
         database: prismaAdapter(getPrismaClient(), {
           provider: "postgresql",
         }),
-        emailAndPassword: {
-          enabled: true,
-          disableSignUp: true,
-          minPasswordLength: 8,
-          maxPasswordLength: 128,
-        },
+        emailAndPassword: createEmailPasswordConfig(),
         rateLimit: createAuthRateLimitConfig(),
         advanced: {
           ipAddress: createAuthIpAddressConfig({
@@ -74,6 +75,23 @@ export const auth =
         },
         hooks: {
           after: createAuthMiddleware(async (context) => {
+            if (context.path === "/sign-out") {
+              const session = context.context.session;
+              if (!session) return;
+              await runInAuthorizedDatabaseTransaction(
+                createIdentityDatabaseAuthorizationContext({
+                  userId: session.user.id,
+                  correlationId: `login-sign-out-${session.session.id}`,
+                }),
+                (transaction) => appendLoginAudit(transaction, {
+                  userId: session.user.id,
+                  action: "login.session-revoke",
+                  correlationId: `login-sign-out-${session.session.id}`,
+                  afterMarker: { sessionsRevoked: true },
+                }),
+              );
+              return;
+            }
             if (!isTotpVerificationPath(context.path)) return;
             const current = context.context.newSession ?? context.context.session;
             const returnedToken = successfulTotpToken(context.context.returned);

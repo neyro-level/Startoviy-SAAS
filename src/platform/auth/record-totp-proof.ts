@@ -2,6 +2,7 @@ import "server-only";
 import { symmetricDecrypt } from "better-auth/crypto";
 import { createOTP } from "@better-auth/utils/otp";
 import { createIdentityDatabaseAuthorizationContext, runInAuthorizedDatabaseTransaction } from "../database/transaction.ts";
+import { appendLoginAudit } from "./login-audit.ts";
 import { createMfaFactorProof } from "./mfa-session-proof.ts";
 
 // Better Auth owns authentication. This supplemental authority check binds a
@@ -19,6 +20,13 @@ export async function recordTotpSessionProof(input: { sessionId: string; userId:
     try { secret = await symmetricDecrypt({ key, data: factors[0].secret }); } catch { return false; }
     if (!await createOTP(secret).verify(code)) return false;
     const changed = await transaction.session.updateMany({ where: { id: session.id, userId: input.userId, expiresAt: { gt: now } }, data: { twoFactorVerifiedAt: now, twoFactorProof: createMfaFactorProof(factors[0], session.id, key) } });
-    return changed.count === 1;
+    if (changed.count !== 1) return false;
+    await appendLoginAudit(transaction, {
+      userId: input.userId,
+      action: "login.mfa",
+      correlationId: `totp-proof-${input.sessionId}`,
+      afterMarker: { factorVerified: true },
+    });
+    return true;
   });
 }

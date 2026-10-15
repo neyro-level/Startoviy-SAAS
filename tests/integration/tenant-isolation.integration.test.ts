@@ -58,6 +58,22 @@ async function inPlatformContext<T>(actorId: string, execute: () => Promise<T>):
   }
 }
 
+async function inIdentityContext<T>(userId: string, execute: () => Promise<T>): Promise<T> {
+  await runtimeClient.query("begin");
+  try {
+    await runtimeClient.query("select set_config('app.principal_kind', $1, true)", ["identity"]);
+    await runtimeClient.query("select set_config('app.actor_id', $1, true)", [userId]);
+    await runtimeClient.query("select set_config('app.organization_id', $1, true)", [""]);
+    await runtimeClient.query("select set_config('app.correlation_id', $1, true)", ["e03-identity-login-audit"]);
+    const result = await execute();
+    await runtimeClient.query("commit");
+    return result;
+  } catch (error) {
+    await runtimeClient.query("rollback");
+    throw error;
+  }
+}
+
 async function inSystemJobContext<T>(execute: () => Promise<T>): Promise<T> {
   await workerClient.query("begin");
   try {
@@ -125,6 +141,28 @@ describe("PostgreSQL tenant isolation", () => {
     await runtimeClient.end();
     await workerClient.end();
     await fixtureClient.end();
+  });
+
+  it("keeps org-null login audit visible to platform-admin and hidden from tenants", async () => {
+    const eventId = "e03-login-audit-event";
+    await fixtureClient.query(
+      "insert into \"AuditEvent\" (\"id\", \"actorType\", \"actorId\", \"action\", \"entityType\", \"entityId\", \"source\", \"correlationId\") values ($1, 'USER', $2, 'login.failed', 'User', $2, 'identity-access', $3)",
+      [eventId, actorA, eventId],
+    );
+    const adminRows = await inPlatformContext(actorA, () =>
+      runtimeClient.query("select \"action\", \"organizationId\" from \"AuditEvent\" where \"id\" = $1", [eventId]),
+    );
+    expect(adminRows.rows).toEqual([{ action: "login.failed", organizationId: null }]);
+    const tenantRows = await inTenantContext(organizationA, () =>
+      runtimeClient.query("select \"id\" from \"AuditEvent\" where \"id\" = $1", [eventId]),
+    );
+    expect(tenantRows.rows).toEqual([]);
+    await expect(inIdentityContext(actorA, () =>
+      runtimeClient.query(
+        "insert into \"AuditEvent\" (\"id\", \"actorType\", \"actorId\", \"action\", \"entityType\", \"entityId\", \"source\", \"correlationId\") values ($1, 'USER', $2, 'login.failed', 'User', $3, 'identity-access', $1)",
+        ["e03-forged-login-audit", actorA, actorB],
+      ),
+    )).rejects.toMatchObject({ code: "42501" });
   });
 
   it("defaults to deny without transaction-local tenant context", async () => {

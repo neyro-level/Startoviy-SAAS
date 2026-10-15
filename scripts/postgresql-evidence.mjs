@@ -21,12 +21,15 @@ export const postgresqlEvidenceManifest = Object.freeze({
       suites: [
         "tests/integration/tenant-isolation.integration.test.ts",
         "tests/integration/principal-runtime-adoption.integration.test.ts",
+        "tests/integration/login-lockout.integration.test.ts",
       ],
       scenarios: [
         "missing tenant context and cross-tenant access are denied",
         "cross-tenant relations and organization-scope drift are rejected",
         "runtime web and worker roles cannot bypass RLS",
         "the declared tenant-model inventory has complete RLS coverage",
+        "parallel failed logins lock an account without enumeration or permanent lockout",
+        "disabled, setup-pending and fail-closed MEMBER login stay denied without leaking identity",
       ],
     },
     E04: {

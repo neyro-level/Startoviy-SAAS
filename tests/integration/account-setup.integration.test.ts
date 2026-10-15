@@ -123,6 +123,7 @@ describe("fresh principal enforcement", () => {
     await prisma.user.update({ where: { id: userId }, data: { disabledAt: null } });
 
     await prisma.user.update({ where: { id: userId }, data: { systemRole: "MEMBER" } });
+    process.env.CLIENT_ACCESS_ENABLED = "true";
     await prisma.member.createMany({
       data: [
         { organizationId: firstOrganization.id, userId, tenantRole: "VIEWER" },
@@ -130,8 +131,13 @@ describe("fresh principal enforcement", () => {
       ],
     });
     await expect(getPrincipalStateByUserId(userId)).resolves.toBeNull();
+    delete process.env.CLIENT_ACCESS_ENABLED;
+    await expect(getPrincipalStateByUserId(userId, { selectedOrganizationId: secondOrganization.id })).resolves.toBeNull();
+    process.env.CLIENT_ACCESS_ENABLED = "true";
     await expect(getPrincipalStateByUserId(userId, { selectedOrganizationId: secondOrganization.id })).resolves.toMatchObject({
       principal: { kind: "tenant-user", organizationId: secondOrganization.id, userId },
     });
+    await prisma.member.deleteMany({ where: { userId } });
+    await expect(getPrincipalStateByUserId(userId, { selectedOrganizationId: secondOrganization.id })).resolves.toBeNull();
   });
 });

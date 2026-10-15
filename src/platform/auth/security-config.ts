@@ -1,3 +1,20 @@
+export const betterAuthPinnedVersion = "1.7.2";
+
+export const authPasswordPolicy = {
+  existingCredentialMinLength: 8,
+  newPasswordMinLength: 12,
+  maxPasswordLength: 128,
+} as const;
+
+export function createEmailPasswordConfig() {
+  return {
+    enabled: true,
+    disableSignUp: true,
+    minPasswordLength: authPasswordPolicy.existingCredentialMinLength,
+    maxPasswordLength: authPasswordPolicy.maxPasswordLength,
+  };
+}
+
 const strictRule = (window: number, max: number) => ({ window, max });
 
 export function createAuthRateLimitConfig() {

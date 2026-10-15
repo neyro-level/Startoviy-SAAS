@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { createProjectInputSchema } from "../src/modules/project-registry/contracts.ts";
-import { createUserInputSchema, systemRoleSchema } from "../src/modules/identity-access/contracts.ts";
+import { createUserInputSchema, systemRoleSchema, type IdentityAdminUserListItem } from "../src/modules/identity-access/contracts.ts";
 import { requestMaintenanceInputSchema } from "../src/modules/platform-operations/contracts.ts";
 import { assertNoInheritedExecutionArtifacts } from "../scripts/execution-artifact-policy.mjs";
 
 describe("starter admin contracts", () => {
   it("uses neutral system roles", () => {
     expect(systemRoleSchema.options).toEqual(["PLATFORM_ADMIN", "STAFF", "MEMBER"]);
+  });
+
+  it("keeps admin user listings free of tenant credentials", () => {
+    const item: IdentityAdminUserListItem = {
+      id: "user-1", name: "Member", username: "member_1", email: "member@fixture.test",
+      systemRole: "MEMBER", disabled: false, memberships: [],
+    };
+    expect(JSON.stringify(item)).not.toMatch(/password|secret|token|otp/i);
   });
 
   it("validates project and user inputs", () => {

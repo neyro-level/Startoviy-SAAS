@@ -87,6 +87,8 @@ model User {
   setupCompletedAt  DateTime?
   systemRole        SystemRole         @default(MEMBER)
   disabledAt        DateTime?          @db.Timestamptz(3)
+  failedLoginCount  Int                @default(0)
+  loginLockedUntil  DateTime?          @db.Timestamptz(3)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   sessions          Session[]

@@ -1,5 +1,5 @@
 import { hasCurrentMfaProof } from "../auth/mfa-session-proof.ts";
-import { readAuthEnvironment } from "../config/server-environment.ts";
+import { isClientAccessEnabled, readAuthEnvironment } from "../config/server-environment.ts";
 import { createCorrelationId } from "../http/correlation.ts";
 import {
   createIdentityDatabaseAuthorizationContext,
@@ -63,6 +63,7 @@ export async function getPrincipalStateByUserId(
     }),
   );
   if (!user || user.disabledAt || user.setupTokens.length > 0) return null;
+  if (user.systemRole === "MEMBER" && !isClientAccessEnabled()) return null;
   if (options.authenticatedSessionId && user.sessions.length !== 1) return null;
 
   let principal: PrincipalContext;

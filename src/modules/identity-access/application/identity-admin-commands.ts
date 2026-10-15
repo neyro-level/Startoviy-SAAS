@@ -87,6 +87,7 @@ export function createIdentityAdminCommands(
       const passwordHash = await hashPassword(input.password);
       if (!await repository.resetUserPassword(input.userId, passwordHash)) throw new IdentityAdminError("USER_NOT_FOUND");
       await repository.appendAudit({ actorId: actor.actorId, action: "user.password-reset", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { sessionsRevoked: true }, correlationId: actor.correlationId });
+      await repository.appendAudit({ actorId: actor.actorId, action: "login.session-revoke", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { sessionsRevoked: true }, correlationId: actor.correlationId });
       return { userId: input.userId };
     },
   });
@@ -102,6 +103,7 @@ export function createIdentityAdminCommands(
       const issued = await repository.issuePlatformRecoveryToken({ userId: input.userId, tokenHash: createHash("sha256").update(recoveryToken).digest("hex"), expiresAt: new Date(Date.now() + 60 * 60 * 1000) });
       if (!issued) throw new IdentityAdminError("USER_NOT_FOUND");
       await repository.appendAudit({ actorId: actor.actorId, action: "platform-admin.recovery.issue", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { expiresInMinutes: 60 }, correlationId: actor.correlationId });
+      await repository.appendAudit({ actorId: actor.actorId, action: "login.recovery", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { sessionsRevoked: false }, correlationId: actor.correlationId });
       return { userId: input.userId, recoveryToken };
     },
   });
@@ -115,6 +117,9 @@ export function createIdentityAdminCommands(
       const repository = dependencies.createRepository(transaction);
       if (!await repository.setUserEnabled(input.userId, input.enabled)) throw new IdentityAdminError("USER_NOT_FOUND");
       await repository.appendAudit({ actorId: actor.actorId, action: input.enabled ? "user.enable" : "user.disable", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { enabled: input.enabled, sessionsRevoked: !input.enabled }, correlationId: actor.correlationId });
+      if (!input.enabled) {
+        await repository.appendAudit({ actorId: actor.actorId, action: "login.session-revoke", entityType: "User", entityId: input.userId, organizationId: null, beforeMarker: null, afterMarker: { sessionsRevoked: true }, correlationId: actor.correlationId });
+      }
       return input;
     },
   });

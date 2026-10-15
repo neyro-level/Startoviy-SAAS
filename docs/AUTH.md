@@ -6,20 +6,44 @@ profile/boundaries; this file owns identity/session/MFA implementation detail.
 
 ## VERIFIED framework and login
 
-Better Auth is the sole identity/password/session framework. `auth.ts` uses
+Better Auth is the sole identity/password/session framework. Installed
+baseline remains pinned `better-auth`/`@better-auth/prisma-adapter` 1.7.2.
+Donor 1.7.7 patches GHSA-965c-763c-88jm for Magic Link plus social/OAuth
+state; this starter enables neither plugin, so the upgrade is not a required
+security fix and is not taken as a hidden schema/RISKY change. `auth.ts` uses
 Prisma adapter, username and twoFactor plugins, exact configured base origin,
-email/password enabled and public signup disabled. Auth is unavailable when
+email/password enabled and public signup disabled. Login still accepts
+existing 8-character hashes; new operator-set passwords (setup, recovery,
+admin reset) require 12–128 characters. Auth is unavailable when
 required auth/database configuration is absent; API returns safe503.
 Public LoginDialog submits username/password and redirects to dashboard;
-invalid login uses a generic error without account enumeration. Full TOTP,
+invalid login uses a generic error without account enumeration. Tenant
+`MEMBER` login and principal resolution stay fail-closed unless
+`CLIENT_ACCESS_ENABLED=true`; a provisioned account is not the same as
+active access. PLATFORM_ADMIN and STAFF are unchanged. Full TOTP,
 setup and recovery interaction in this dialog is still TARGET.
 
 `security-config.ts` configures PostgreSQL-backed rate limits: baseline100
-requests/60s, sign-in username/email5/60s. Production requires explicit trusted
+requests/60s, sign-in username/email5/60s. That path/IP limiter is not the
+account lockout. `login-security.ts` adds a transaction-locked per-user
+counter: 10 failed password attempts lock the account for 15 minutes, then the
+window expires and the counter resets. Live locks are not extended by further
+attempts. Locked, unknown and wrong-password sign-in all return the same 401
+public envelope without an account-existence code. Early denials for
+locked, disabled, pending-setup or fail-closed MEMBER accounts still
+pass through Better Auth's path/IP limiter first, using a non-usable
+password so a live lock cannot authenticate; a 429 is returned as-is. Known-user login evidence
+is written to `AuditEvent` as `login.failed`, `login.password-verified`,
+`login.locked`, `login.unlocked`, `login.mfa`, `login.recovery` and
+`login.session-revoke`. Rows are org-null platform evidence: platform-admin
+and staff can read them; a tenant principal cannot. Markers hold only boolean
+flags. Password, OTP, token, username and IP never enter the event. Unknown
+identities produce no row, so client-controlled login text cannot query another
+user. Login does not call an external notifier. Production requires explicit trusted
 proxy CIDRs; without them startup rejects forwarded-IP trust. Local mode with
 no trusted proxy does not trust x-forwarded-for. Rate-limit rules for other
-sensitive setup/TOTP/recovery endpoints and distributed adversarial evidence
-remain REQUIRES CHECK; do not infer them from the login rule.
+sensitive setup/TOTP/recovery endpoints remain REQUIRES CHECK; do not infer
+them from the login rule.
 
 ## VERIFIED persisted session and authority
 
