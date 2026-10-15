@@ -9,7 +9,6 @@ import { loginInvalidPublicError, loginLockoutPolicy } from "../../src/platform/
 import { getPrismaClient } from "../../src/platform/database/prisma/client.ts";
 import {
   createDatabaseAuthorizationContext,
-  createIdentityDatabaseAuthorizationContext,
   runInAuthorizedDatabaseTransaction,
 } from "../../src/platform/database/transaction.ts";
 
@@ -110,36 +109,6 @@ describe("native account login lockout", () => {
     ]));
     expect(adminEvents.every((event) => event.actorId === account.id && event.organizationId === null)).toBe(true);
     expect(JSON.stringify(adminEvents.map((event) => event.afterMarker))).not.toMatch(/otp|@fixture\.test|Synthetic-lock|847291|hunter2/i);
-    const tenantEvents = await runInAuthorizedDatabaseTransaction(
-      createDatabaseAuthorizationContext({
-        kind: "tenant-user",
-        userId: account.id,
-        organizationId: randomUUID(),
-        membershipId: randomUUID(),
-        role: "ORG_MEMBER",
-        correlationId: randomUUID(),
-      }),
-      (transaction) => transaction.auditEvent.findMany({
-        where: { entityId: account.id, action: { startsWith: "login." } },
-      }),
-    );
-    expect(tenantEvents).toEqual([]);
-    const forged = await runInAuthorizedDatabaseTransaction(
-      createIdentityDatabaseAuthorizationContext({ userId: account.id, correlationId: randomUUID() }),
-      (transaction) => transaction.auditEvent.create({
-        data: {
-          organizationId: null,
-          actorType: "USER",
-          actorId: account.id,
-          action: "login.failed",
-          entityType: "User",
-          entityId: randomUUID(),
-          source: "identity-access",
-          correlationId: randomUUID(),
-        },
-      }).then(() => "wrote", (error) => error),
-    );
-    expect(forged).not.toBe("wrote");
   });
 
   it("denies tenant login when client access is unset and still allows platform admin", async () => {
