@@ -101,19 +101,30 @@ async function withLockedUser(
   );
 }
 
-export async function denyLockedLogin(identity: LoginIdentity | null, correlationId: string, now = new Date()): Promise<Response | null> {
-  if (!identity) return null;
+export async function shouldDenyLogin(identity: LoginIdentity | null, correlationId: string, now = new Date()): Promise<boolean> {
+  if (!identity) return false;
   const user = await findLoginUser(identity, correlationId);
-  if (!user) return null;
-  const denied = user.disabledAt || user.setupTokens.length > 0
+  if (!user) return false;
+  return Boolean(user.disabledAt || user.setupTokens.length > 0
     || (user.systemRole === "MEMBER" && !isClientAccessEnabled())
-    || isLoginLocked(user, now);
-  if (!denied) return null;
-  await runInAuthorizedDatabaseTransaction(
-    createIdentityDatabaseAuthorizationContext({ userId: user.id, correlationId }),
-    (transaction) => appendLoginAudit(transaction, { userId: user.id, action: "login.failed", correlationId }),
-  );
+    || isLoginLocked(user, now));
+}
+
+export async function denyLockedLogin(identity: LoginIdentity | null, correlationId: string, now = new Date()): Promise<Response | null> {
+  if (!await shouldDenyLogin(identity, correlationId, now)) return null;
   return invalidLoginResponse(correlationId);
+}
+
+async function requestWithoutUsablePassword(request: Request): Promise<Request> {
+  try {
+    const body: unknown = await request.clone().json();
+    if (!body || typeof body !== "object") return request;
+    return new Request(request, {
+      body: JSON.stringify({ ...body, password: "invalid-login-probe" }),
+    });
+  } catch {
+    return request;
+  }
 }
 
 export async function recordLoginResult(input: { identity: LoginIdentity | null; status: number; correlationId: string; now?: Date }) {
@@ -158,15 +169,14 @@ export async function handleAuthHttpRequest(input: {
     }, 503);
   }
   const identity = input.method === "POST" ? await getLoginIdentityFromRequest(input.request) : null;
-  const locked = await denyLockedLogin(identity, input.correlationId);
-  if (locked) {
-    locked.headers.set("X-Correlation-ID", input.correlationId);
-    return locked;
-  }
+  const denied = input.method === "POST" && await shouldDenyLogin(identity, input.correlationId);
   const handlers = input.createHandlers(input.auth);
-  const response = await (input.method === "GET" ? handlers.GET : handlers.POST)(input.request);
-  if (input.method === "POST") await recordLoginResult({ identity, status: response.status, correlationId: input.correlationId });
-  if (input.method === "POST" && identity && response.status === 401) {
+  const authRequest = denied ? await requestWithoutUsablePassword(input.request) : input.request;
+  const response = await (input.method === "GET" ? handlers.GET : handlers.POST)(authRequest);
+  if (input.method === "POST" && response.status !== 429) {
+    await recordLoginResult({ identity, status: response.status, correlationId: input.correlationId });
+  }
+  if ((denied && response.status !== 429) || (input.method === "POST" && identity && response.status === 401)) {
     const neutralized = invalidLoginResponse(input.correlationId);
     neutralized.headers.set("X-Correlation-ID", input.correlationId);
     return neutralized;
